@@ -133,6 +133,22 @@ class VpnPlugin : Plugin() {
         call.resolve(ret)
     }
 
+    // Отключать при блокировке / подключать при разблокировке — как у INCY.
+    @PluginMethod
+    fun setLockBehavior(call: PluginCall) {
+        VpnPrefs.setLockDisconnect(context, call.getBoolean("disconnectOnLock", false) ?: false)
+        VpnPrefs.setLockReconnect(context, call.getBoolean("reconnectOnUnlock", false) ?: false)
+        call.resolve()
+    }
+
+    @PluginMethod
+    fun getLockBehavior(call: PluginCall) {
+        val ret = JSObject()
+        ret.put("disconnectOnLock", VpnPrefs.isLockDisconnect(context))
+        ret.put("reconnectOnUnlock", VpnPrefs.isLockReconnect(context))
+        call.resolve(ret)
+    }
+
     @PluginMethod
     fun stop(call: PluginCall) {
         val i = Intent(context, MihomoVpnService::class.java)
