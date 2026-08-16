@@ -4,8 +4,10 @@ import android.app.Notification
 import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.PendingIntent
+import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
+import android.content.IntentFilter
 import android.net.VpnService
 import android.os.Build
 import android.os.ParcelFileDescriptor
@@ -25,6 +27,26 @@ class MihomoVpnService : VpnService() {
     private var netCallback: android.net.ConnectivityManager.NetworkCallback? = null
     @Volatile private var running = false
 
+    // --- Отключение по блокировке экрана (аналог функции INCY) ---
+    // Слушаем SCREEN_OFF/USER_PRESENT, пока сервис жив (он foreground, поэтому не убивается
+    // системой). pauseTunnel()/resumeTunnel() НЕ трогают stopSelf()/stopForeground() — сервис
+    // и уведомление остаются на месте, гасится только сам туннель.
+    private var screenReceiver: BroadcastReceiver? = null
+    @Volatile private var pausedByLock = false
+    // Параметры последнего успешного запуска — нужны resumeTunnel(), чтобы поднять туннель
+    // заново без нового Intent (пользователь мог свернуть приложение).
+    private data class LaunchParams(
+        val subUrl: String,
+        val hwid: String,
+        val userAgent: String,
+        val splitMode: String,
+        val splitApps: Array<String>,
+        val rules: Array<String>,
+        val chains: List<Pair<String, String>>,
+        val serviceGroups: Array<String>,
+    )
+    @Volatile private var lastParams: LaunchParams? = null
+
     companion object {
         const val ACTION_START = "network.geodema.misetanibox.START"
         const val ACTION_STOP = "network.geodema.misetanibox.STOP"
@@ -43,6 +65,57 @@ class MihomoVpnService : VpnService() {
 
         @Volatile var isRunning = false
             private set
+    }
+
+    override fun onCreate() {
+        super.onCreate()
+        registerScreenReceiver()
+    }
+
+    private fun registerScreenReceiver() {
+        if (screenReceiver != null) return
+        val filter = IntentFilter().apply {
+            addAction(Intent.ACTION_SCREEN_OFF)
+            addAction(Intent.ACTION_USER_PRESENT)
+        }
+        val r = object : BroadcastReceiver() {
+            override fun onReceive(c: Context?, i: Intent?) {
+                when (i?.action) {
+                    Intent.ACTION_SCREEN_OFF -> onScreenLocked()
+                    Intent.ACTION_USER_PRESENT -> onScreenUnlocked()
+                }
+            }
+        }
+        try {
+            registerReceiver(r, filter)
+            screenReceiver = r
+        } catch (_: Exception) {}
+    }
+
+    private fun unregisterScreenReceiver() {
+        val r = screenReceiver ?: return
+        screenReceiver = null
+        try { unregisterReceiver(r) } catch (_: Exception) {}
+    }
+
+    // Экран выключился/заблокирован. ACTION_SCREEN_OFF срабатывает и на обычном
+    // выключении экрана, и на блокировке — для этой функции разницы нет, VPN не нужен,
+    // пока пользователь не смотрит в телефон.
+    private fun onScreenLocked() {
+        if (!running) return
+        if (!VpnPrefs.isLockDisconnect(this)) return
+        pausedByLock = true
+        worker.execute { pauseTunnel() }
+    }
+
+    // USER_PRESENT — это именно факт прохождения экрана блокировки (PIN/отпечаток/фейс),
+    // а не просто ACTION_SCREEN_ON: тот срабатывает и когда пользователь лишь посмотрел
+    // на экран блокировки, не разблокировав его.
+    private fun onScreenUnlocked() {
+        if (!pausedByLock) return
+        pausedByLock = false
+        if (!VpnPrefs.isLockReconnect(this)) return
+        worker.execute { resumeTunnel() }
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
@@ -103,6 +176,7 @@ class MihomoVpnService : VpnService() {
         serviceGroups: Array<String>,
     ) {
         if (running) return
+        lastParams = LaunchParams(subUrl, hwid, userAgent, splitMode, splitApps, rules, chains, serviceGroups)
         try {
             // Классика: сперва тянем конфиг подписки (со всеми селекторами автора). Если не
             // удалось — не поднимаем TUN, иначе интернет пропадёт при мёртвом туннеле.
@@ -158,6 +232,7 @@ class MihomoVpnService : VpnService() {
             watchNetworkChanges()
             running = true
             isRunning = true
+            updateNotif(connected = true)
             broadcast("connected", "")
 
             // Через несколько секунд снимаем отчёт ядра: поднялся ли TUN и загрузилась ли
@@ -214,9 +289,38 @@ class MihomoVpnService : VpnService() {
         tunFd = null
         running = false
         isRunning = false
+        pausedByLock = false
+        lastParams = null
         broadcast("disconnected", "")
+        unregisterScreenReceiver()
         stopForeground(STOP_FOREGROUND_REMOVE)
         stopSelf()
+    }
+
+    // Пауза по блокировке экрана: гасит туннель ТЕМИ ЖЕ шагами, что и stopTunnel(), но
+    // НЕ убивает сервис — уведомление остаётся (иначе Android через 10с сочтёт
+    // foreground-сервис без уведомления зависшим), а screenReceiver не отписывается,
+    // чтобы поймать разблокировку.
+    private fun pauseTunnel() {
+        if (!running) return
+        unwatchNetworkChanges()
+        try { Mobilecore.stop() } catch (_: Exception) {}
+        try { Mobilecore.setProtect(null) } catch (_: Exception) {}
+        closeOwnedTunFd()
+        tunFd = null
+        running = false
+        isRunning = false
+        broadcast("disconnected", "экран заблокирован")
+        updateNotif(connected = false)
+    }
+
+    // Поднять туннель заново после разблокировки — с теми же параметрами, что и в
+    // прошлый раз. Подписка перечитывается заново (сервер мог поменяться, конфиг мог
+    // обновиться) — так же, как при обычном ручном переподключении.
+    private fun resumeTunnel() {
+        if (running) return
+        val p = lastParams ?: return
+        startTunnel(p.subUrl, p.hwid, p.userAgent, p.splitMode, p.splitApps, p.rules, p.chains, p.serviceGroups)
     }
 
     // Смена сети (Wi-Fi ↔ мобильный интернет) рвёт установленные соединения: сокеты
@@ -294,6 +398,7 @@ class MihomoVpnService : VpnService() {
     }
 
     override fun onDestroy() {
+        unregisterScreenReceiver()
         stopTunnel()
         worker.shutdown()
         super.onDestroy()
@@ -449,9 +554,9 @@ class MihomoVpnService : VpnService() {
         """.trimMargin()
     }
 
-    private fun startForegroundNotif() {
-        val nm = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+    private fun buildNotif(connected: Boolean): Notification {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            val nm = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
             val ch = NotificationChannel(CHANNEL_ID, "VPN", NotificationManager.IMPORTANCE_LOW)
             nm.createNotificationChannel(ch)
         }
@@ -459,18 +564,29 @@ class MihomoVpnService : VpnService() {
             this, 0, Intent(this, MainActivity::class.java),
             PendingIntent.FLAG_IMMUTABLE
         )
-        val notif: Notification = Notification.Builder(this, CHANNEL_ID)
+        return Notification.Builder(this, CHANNEL_ID)
             .setContentTitle("Misetanibox")
-            .setContentText("Туннель активен")
+            .setContentText(if (connected) "Туннель активен" else "На паузе — экран заблокирован")
             .setSmallIcon(R.mipmap.ic_launcher)
             .setContentIntent(pi)
             .setOngoing(true)
             .build()
+    }
+
+    private fun startForegroundNotif() {
+        val notif = buildNotif(connected = true)
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
             startForeground(NOTIF_ID, notif, android.content.pm.ServiceInfo.FOREGROUND_SERVICE_TYPE_SPECIAL_USE)
         } else {
             startForeground(NOTIF_ID, notif)
         }
+    }
+
+    // Обновить текст уведомления, не трогая foreground-статус сервиса (используется
+    // при паузе/резюме по блокировке экрана — сервис и так уже foreground).
+    private fun updateNotif(connected: Boolean) {
+        val nm = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+        nm.notify(NOTIF_ID, buildNotif(connected))
     }
 
     private fun broadcast(state: String, message: String) {
