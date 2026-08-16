@@ -31,8 +31,24 @@ object VpnPrefs {
     const val KEY_CHAINS = "chains"
     /** JSON-массив имён select-групп сервисов (конфигуратор селекторов) */
     const val KEY_SERVICE_GROUPS = "service_groups"
+    /** Разрывать туннель при блокировке экрана (аналог функции INCY) */
+    const val KEY_LOCK_DISCONNECT = "lock_disconnect"
+    /** Поднимать туннель заново при разблокировке — работает только вместе с KEY_LOCK_DISCONNECT */
+    const val KEY_LOCK_RECONNECT = "lock_reconnect"
 
     fun prefs(ctx: Context) = ctx.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+
+    fun isLockDisconnect(ctx: Context): Boolean = prefs(ctx).getBoolean(KEY_LOCK_DISCONNECT, false)
+
+    fun setLockDisconnect(ctx: Context, on: Boolean) {
+        prefs(ctx).edit().putBoolean(KEY_LOCK_DISCONNECT, on).apply()
+    }
+
+    fun isLockReconnect(ctx: Context): Boolean = prefs(ctx).getBoolean(KEY_LOCK_RECONNECT, false)
+
+    fun setLockReconnect(ctx: Context, on: Boolean) {
+        prefs(ctx).edit().putBoolean(KEY_LOCK_RECONNECT, on).apply()
+    }
 
     fun hasSubscription(ctx: Context): Boolean =
         (prefs(ctx).getString(KEY_SUB_URL, "") ?: "").isNotBlank()
