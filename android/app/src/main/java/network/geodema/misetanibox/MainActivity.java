@@ -1,4 +1,4 @@
-package network.geodema.misetanibox;
+package network.geodema.misetanibox2;
 
 import android.os.Bundle;
 import com.getcapacitor.BridgeActivity;
