@@ -28,13 +28,8 @@ class MihomoVpnService : VpnService() {
     @Volatile private var running = false
 
     // --- Отключение по блокировке экрана (аналог функции INCY) ---
-    // Слушаем SCREEN_OFF/USER_PRESENT, пока сервис жив (он foreground, поэтому не убивается
-    // системой). pauseTunnel()/resumeTunnel() НЕ трогают stopSelf()/stopForeground() — сервис
-    // и уведомление остаются на месте, гасится только сам туннель.
     private var screenReceiver: BroadcastReceiver? = null
     @Volatile private var pausedByLock = false
-    // Параметры последнего успешного запуска — нужны resumeTunnel(), чтобы поднять туннель
-    // заново без нового Intent (пользователь мог свернуть приложение).
     private data class LaunchParams(
         val subUrl: String,
         val hwid: String,
@@ -56,9 +51,8 @@ class MihomoVpnService : VpnService() {
         const val EXTRA_SPLIT_MODE = "split_mode"
         const val EXTRA_SPLIT_APPS = "split_apps"
         const val EXTRA_RULES = "rules"
-        const val EXTRA_CHAINS = "chains" // JSON: [{"name":"...","entry":"..."}]
-        const val EXTRA_SERVICE_GROUPS = "service_groups" // имена select-групп сервисов (use: main)
-        // префикс имени группы-цепочки в списке серверов
+        const val EXTRA_CHAINS = "chains"
+        const val EXTRA_SERVICE_GROUPS = "service_groups"
         const val CHAIN_PREFIX = "🔗 "
         const val CHANNEL_ID = "misetanibox_vpn"
         const val NOTIF_ID = 7
@@ -98,9 +92,6 @@ class MihomoVpnService : VpnService() {
         try { unregisterReceiver(r) } catch (_: Exception) {}
     }
 
-    // Экран выключился/заблокирован. ACTION_SCREEN_OFF срабатывает и на обычном
-    // выключении экрана, и на блокировке — для этой функции разницы нет, VPN не нужен,
-    // пока пользователь не смотрит в телефон.
     private fun onScreenLocked() {
         if (!running) return
         if (!VpnPrefs.isLockDisconnect(this)) return
@@ -108,9 +99,6 @@ class MihomoVpnService : VpnService() {
         worker.execute { pauseTunnel() }
     }
 
-    // USER_PRESENT — это именно факт прохождения экрана блокировки (PIN/отпечаток/фейс),
-    // а не просто ACTION_SCREEN_ON: тот срабатывает и когда пользователь лишь посмотрел
-    // на экран блокировки, не разблокировав его.
     private fun onScreenUnlocked() {
         if (!pausedByLock) return
         pausedByLock = false
@@ -133,21 +121,16 @@ class MihomoVpnService : VpnService() {
                 val chains = parseChains(intent?.getStringExtra(EXTRA_CHAINS))
                 val serviceGroups = intent?.getStringArrayExtra(EXTRA_SERVICE_GROUPS) ?: arrayOf()
                 if (subUrl.isEmpty()) {
-                    // сюда попадаем при рестарте сервиса системой с пустым intent
                     stopSelf()
                     return START_NOT_STICKY
                 }
-                // Уведомление обязано появиться сразу после startForegroundService,
-                // поэтому показываем его на главном потоке, а запуск ядра уводим в фон.
                 startForegroundNotif()
                 worker.execute { startTunnel(subUrl, hwid, userAgent, splitMode, splitApps, rules, chains, serviceGroups) }
             }
         }
-        // не START_STICKY: иначе система переподнимет сервис с пустым intent и без подписки
         return START_NOT_STICKY
     }
 
-    // Разбор цепочек из JSON: [{"name":"NL→DE","entry":"🇳🇱 NL #1"}]
     private fun parseChains(json: String?): List<Pair<String, String>> {
         if (json.isNullOrBlank()) return emptyList()
         return try {
@@ -178,23 +161,38 @@ class MihomoVpnService : VpnService() {
         if (running) return
         lastParams = LaunchParams(subUrl, hwid, userAgent, splitMode, splitApps, rules, chains, serviceGroups)
         try {
-            // Классика: сперва тянем конфиг подписки (со всеми селекторами автора). Если не
-            // удалось — не поднимаем TUN, иначе интернет пропадёт при мёртвом туннеле.
+            var config: String? = null
+            var usedCache = false
             val fetched = Subscription.fetch(subUrl, hwid, userAgent)
             if (fetched.body.isBlank()) {
                 val reason = fetched.error ?: "пустой ответ"
-                broadcast("error", "не удалось загрузить конфиг подписки ($reason) — проверьте ссылку и интернет")
-                return
+                config = readCachedConfig()
+                if (config == null) {
+                    broadcast("error", "не удалось загрузить конфиг подписки ($reason) — проверьте ссылку и интернет")
+                    return
+                }
+                usedCache = true
+                android.util.Log.i("Misetanibox", "подписка недоступна ($reason) — использую последний закэшированный конфиг")
+            } else {
+                config = try {
+                    Subscription.convert(fetched.body).config
+                } catch (e: Exception) {
+                    val cached = readCachedConfig()
+                    if (cached == null) {
+                        broadcast("error", "конфиг подписки не разобран: " + (e.message ?: "неизвестный формат"))
+                        return
+                    }
+                    config = cached
+                    usedCache = true
+                    android.util.Log.i("Misetanibox", "новый конфиг не разобрался (${e.message}) — использую последний закэшированный")
+                }
             }
-            // Подписка может прийти YAML-ом mihomo, JSON-ом Xray или списком ссылок:
-            // формат определяет и приводит к YAML ядро. Ошибка здесь — это «формат не
-            // разобрался», и с ней туннель поднимать нельзя.
-            val config = try {
-                Subscription.convert(fetched.body).config
-            } catch (e: Exception) {
-                broadcast("error", "конфиг подписки не разобран: " + (e.message ?: "неизвестный формат"))
-                return
+            if (usedCache) {
+                broadcast("cached", "подписка недоступна — работаю на последнем сохранённом конфиге")
+            } else {
+                writeCachedConfig(config!!)
             }
+            val finalConfig = config!!
             val builder = Builder()
                 .setSession("Misetanibox")
                 .setMtu(9000)
@@ -202,7 +200,6 @@ class MihomoVpnService : VpnService() {
                 .addRoute("0.0.0.0", 0)
                 .addDnsServer("172.19.0.2")
                 .setBlocking(false)
-            // раздельное туннелирование по приложениям (см. applySplitTunnel)
             applySplitTunnel(builder, splitMode, splitApps)
 
             val pfd = builder.establish() ?: run {
@@ -211,23 +208,20 @@ class MihomoVpnService : VpnService() {
             }
             tunFd = pfd
             val fd = pfd.detachFd()
-            ownedTunFd = fd // пока ядро не стартовало — дескриптор наш
+            ownedTunFd = fd
 
             val homeDir = File(filesDir, "clash").apply { mkdirs() }.absolutePath
-            // config уже получен фетчем выше (классический режим)
 
-            // защита исходящих сокетов ядра (иначе петля через TUN)
             Mobilecore.setProtect(object : SocketProtector {
                 override fun protect(fd: Long): Boolean = protect(fd.toInt())
             })
 
-            val err = Mobilecore.start(homeDir, config, fd.toLong())
+            val err = Mobilecore.start(homeDir, finalConfig, fd.toLong())
             if (err.isNotEmpty()) {
                 broadcast("error", err)
-                stopTunnel() // закроет дескриптор: иначе интерфейс останется поднятым и весь трафик уйдёт в никуда
+                stopTunnel()
                 return
             }
-            // старт удался — дескриптор теперь у ядра, оно закроет его при остановке
             ownedTunFd = -1
             watchNetworkChanges()
             running = true
@@ -235,9 +229,6 @@ class MihomoVpnService : VpnService() {
             updateNotif(connected = true)
             broadcast("connected", "")
 
-            // Через несколько секунд снимаем отчёт ядра: поднялся ли TUN и загрузилась ли
-            // подписка. hub.ApplyConfig ошибок не возвращает, без этого «нет трафика»
-            // выглядит как «всё в порядке».
             worker.execute {
                 try {
                     Thread.sleep(6000)
@@ -250,13 +241,6 @@ class MihomoVpnService : VpnService() {
         }
     }
 
-    // Раздельное туннелирование. В Android addAllowedApplication и addDisallowedApplication
-    // взаимоисключающие — нельзя смешивать в одном Builder, поэтому режимы разведены.
-    //  off    — весь трафик в туннель, кроме самого приложения (обычный режим);
-    //  bypass — выбранные приложения идут МИМО VPN (напрямую), остальное в туннель;
-    //  only   — в туннель идут ТОЛЬКО выбранные приложения, остальное напрямую.
-    // Собственное приложение всегда вне туннеля (иначе петля fetch/ядро через TUN):
-    //  в off/bypass — через addDisallowedApplication, в only — оно просто не в allowed-списке.
     private fun applySplitTunnel(builder: Builder, mode: String, apps: Array<String>) {
         when (mode) {
             "only" -> {
@@ -264,7 +248,6 @@ class MihomoVpnService : VpnService() {
                 for (p in apps) {
                     try { builder.addAllowedApplication(p); added++ } catch (_: Exception) {}
                 }
-                // пустой/битый список в режиме «только» = мёртвый туннель → откатываемся к обычному
                 if (added == 0) {
                     try { builder.addDisallowedApplication(packageName) } catch (_: Exception) {}
                 }
@@ -279,6 +262,23 @@ class MihomoVpnService : VpnService() {
                 try { builder.addDisallowedApplication(packageName) } catch (_: Exception) {}
             }
         }
+    }
+
+    private fun cacheFile(): File = File(filesDir, "last_config_cache.yaml")
+
+    private fun readCachedConfig(): String? {
+        val f = cacheFile()
+        if (!f.exists()) return null
+        return try {
+            val text = f.readText()
+            if (text.isBlank()) null else text
+        } catch (_: Exception) {
+            null
+        }
+    }
+
+    private fun writeCachedConfig(config: String) {
+        try { cacheFile().writeText(config) } catch (_: Exception) {}
     }
 
     private fun stopTunnel() {
@@ -297,10 +297,6 @@ class MihomoVpnService : VpnService() {
         stopSelf()
     }
 
-    // Пауза по блокировке экрана: гасит туннель ТЕМИ ЖЕ шагами, что и stopTunnel(), но
-    // НЕ убивает сервис — уведомление остаётся (иначе Android через 10с сочтёт
-    // foreground-сервис без уведомления зависшим), а screenReceiver не отписывается,
-    // чтобы поймать разблокировку.
     private fun pauseTunnel() {
         if (!running) return
         unwatchNetworkChanges()
@@ -314,20 +310,12 @@ class MihomoVpnService : VpnService() {
         updateNotif(connected = false)
     }
 
-    // Поднять туннель заново после разблокировки — с теми же параметрами, что и в
-    // прошлый раз. Подписка перечитывается заново (сервер мог поменяться, конфиг мог
-    // обновиться) — так же, как при обычном ручном переподключении.
     private fun resumeTunnel() {
         if (running) return
         val p = lastParams ?: return
         startTunnel(p.subUrl, p.hwid, p.userAgent, p.splitMode, p.splitApps, p.rules, p.chains, p.serviceGroups)
     }
 
-    // Смена сети (Wi-Fi ↔ мобильный интернет) рвёт установленные соединения: сокеты
-    // остаются привязанными к пропавшему интерфейсу. Без реакции ядро продолжает
-    // держать мёртвые соединения, и связь «висит», пока пользователь не переподключится.
-    // Поэтому сообщаем системе актуальную сеть и просим ядро сбросить старые соединения —
-    // новые установятся уже через новый интерфейс.
     private fun watchNetworkChanges() {
         if (netCallback != null) return
         val cm = getSystemService(Context.CONNECTIVITY_SERVICE) as? android.net.ConnectivityManager ?: return
@@ -343,9 +331,7 @@ class MihomoVpnService : VpnService() {
                     onNetworkSwitched(network)
                 }
             }
-            override fun onLost(network: android.net.Network) {
-                // сеть пропала — ждём появления новой, соединения сбросим тогда
-            }
+            override fun onLost(network: android.net.Network) {}
         }
         try {
             cm.registerDefaultNetworkCallback(cb)
@@ -365,12 +351,10 @@ class MihomoVpnService : VpnService() {
     @Volatile private var lastNetSwitch = 0L
     private fun onNetworkSwitched(network: android.net.Network) {
         if (!running) return
-        // защита от шторма событий при переключении
         val now = android.os.SystemClock.elapsedRealtime()
         if (now - lastNetSwitch < 1500) return
         lastNetSwitch = now
 
-        // система должна знать, поверх какой сети работает туннель
         try { setUnderlyingNetworks(arrayOf(network)) } catch (_: Exception) {}
 
         worker.execute {
@@ -386,9 +370,6 @@ class MihomoVpnService : VpnService() {
         }
     }
 
-    // Закрывает дескриптор TUN, только если он всё ещё наш.
-    // После detachFd() у ParcelFileDescriptor владения нет, и его close() ничего не закрывал:
-    // интерфейс оставался поднятым, а трафик уходил в никуда даже после «отключить».
     private fun closeOwnedTunFd() {
         val raw = ownedTunFd
         ownedTunFd = -1
@@ -405,31 +386,21 @@ class MihomoVpnService : VpnService() {
     }
 
     override fun onRevoke() {
-        // система отозвала разрешение VPN — гасим ядро в фоне, чтобы не блокировать поток
         worker.execute { stopTunnel() }
         super.onRevoke()
     }
 
-    // Экранирование строки в YAML: имена узлов приходят из подписки и содержат
-    // эмодзи, кавычки и двоеточия — без экранирования конфиг ломается.
     private fun yamlStr(v: String): String =
         "\"" + v.replace("\\", "\\\\").replace("\"", "\\\"") + "\""
 
-    // (провайдер-режим, оставлен как справка; классический режим его не использует)
     private fun buildConfig(
         subUrl: String,
         hwid: String,
         userAgent: String,
         rules: Array<String>,
-        chains: List<Pair<String, String>>, // имя цепочки → входной узел
-        serviceGroups: Array<String>,       // имена select-групп сервисов (конфигуратор селекторов)
+        chains: List<Pair<String, String>>,
+        serviceGroups: Array<String>,
     ): String {
-        // Заголовки запроса подписки. User-Agent определяет формат ответа панели: на
-        // clash-UA приходит YAML, на v2ray/xray-UA — JSON или список ссылок. Провайдер
-        // mihomo умеет только первое, поэтому здесь UA обязан быть clash-совместимым
-        // (в классическом режиме формат разбирает Subscription.convert, и UA свободен).
-        // Отступы без маркера "|": строка встраивается в шаблон как |$header,
-        // маркер добавляет сам шаблон — иначе в YAML попадут литеральные палки.
         val header = buildString {
             append("    header:\n")
             append("      User-Agent: [${yamlStr(userAgent)}]")
@@ -441,10 +412,6 @@ class MihomoVpnService : VpnService() {
             }
         }
 
-        // Цепочки: узлы приходят из провайдера подписки, поэтому dialer-proxy нельзя
-        // повесить ни на группу (mihomo это запрещает), ни на конкретный узел.
-        // Решение — ещё один провайдер с той же подпиской и override: все его узлы
-        // ходят через входной узел, а префикс разводит имена с основными.
         val chainProviders = StringBuilder()
         val chainGroups = StringBuilder()
         val chainNames = mutableListOf<String>()
@@ -474,13 +441,9 @@ class MihomoVpnService : VpnService() {
             ).append("\n")
         }
 
-        // Цепочки добавляем в главный селектор, чтобы их можно было выбрать как обычный сервер
         val proxyGroupChains = if (chainNames.isEmpty()) "" else
             "\n    proxies:\n" + chainNames.joinToString("\n") { "      - ${yamlStr(it)}" }
 
-        // Конфигуратор селекторов: на каждый сервис «свой выбор» — своя select-группа
-        // поверх той же подписки (use: main). Правила GEOSITE,<geo>,<имя группы> приходят
-        // в rules и ссылаются на эти группы; узел в группе юзер выбирает во вкладке СЕРВЕРЫ.
         val serviceGroupsBlock = StringBuilder()
         for (g in serviceGroups) {
             if (g.isBlank()) continue
@@ -508,10 +471,7 @@ class MihomoVpnService : VpnService() {
             |log-level: warning
             |ipv6: false
             |unified-delay: true
-            |# поиск процесса-владельца соединения нам не нужен (раздельный туннель делает
-            |# VpnService), а на Android это сканирование /proc на каждое соединение — батарея
             |find-process-mode: "off"
-            |# запоминать выбранный сервер между запусками
             |profile:
             |  store-selected: true
             |external-controller: 127.0.0.1:9090
@@ -582,8 +542,6 @@ class MihomoVpnService : VpnService() {
         }
     }
 
-    // Обновить текст уведомления, не трогая foreground-статус сервиса (используется
-    // при паузе/резюме по блокировке экрана — сервис и так уже foreground).
     private fun updateNotif(connected: Boolean) {
         val nm = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
         nm.notify(NOTIF_ID, buildNotif(connected))
@@ -595,7 +553,6 @@ class MihomoVpnService : VpnService() {
         i.putExtra("state", state)
         i.putExtra("message", message)
         sendBroadcast(i)
-        // держим плитку в шторке и виджет в актуальном состоянии
         try { VpnAppWidget.requestUpdate(this) } catch (_: Exception) {}
         try { VpnTileService.requestUpdate(this) } catch (_: Exception) {}
     }
