@@ -209,6 +209,7 @@ body{background:var(--bg);color:var(--fg);font-family:'Inter Tight',sans-serif;o
     <div class="row"><div class="grow"><div class="t">Автозапуск</div><div class="s">ПОДНЯТЬ ТУННЕЛЬ ПРИ ВКЛЮЧЕНИИ УСТРОЙСТВА</div></div><button class="toggle" id="tgl-autostart" onclick="toggleAutostart(this)"></button></div>
     <div class="row"><div class="grow"><div class="t">Отключать при блокировке</div><div class="s">РАЗРЫВАТЬ ПРИ БЛОКИРОВКЕ ЭКРАНА</div></div><button class="toggle" id="tgl-lock-disconnect" onclick="toggleLockDisconnect(this)"></button></div>
     <div class="row"><div class="grow"><div class="t">Подключать при разблокировке</div><div class="s">АВТОМАТИЧЕСКИ ПЕРЕПОДКЛЮЧАТЬСЯ ПОСЛЕ РАЗБЛОКИРОВКИ</div></div><button class="toggle" id="tgl-lock-reconnect" onclick="toggleLockReconnect(this)"></button></div>
+    <div class="row" onclick="requestBatteryIgnore()"><div class="grow"><div class="t">Отключить оптимизацию батареи</div><div class="s" id="batt-sub">НУЖНО, ЧТОБЫ БЛОКИРОВКА ЭКРАНА РАБОТАЛА В ФОНЕ</div></div><span class="chev">›</span></div>
     <div class="list-note" style="padding:10px 4px 0">Плитка в шторке и виджет на рабочем столе включают VPN одним тапом — добавь их через системное меню.</div>
     <div class="row"><div class="grow"><div class="t">Тема</div><div class="s">ТЁМНАЯ / СВЕТЛАЯ</div></div><span class="chev" onclick="toggleTheme()">◐</span></div>
     <div class="row" style="display:block">
