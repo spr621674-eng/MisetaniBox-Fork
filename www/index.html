@@ -946,6 +946,29 @@ async function toggleLockReconnect(btn){
   toast(on?'Переподключение при разблокировке включено':'Переподключение при разблокировке выключено');
 }
 
+async function initBatteryStatus(){
+  const el=document.getElementById('batt-sub'); if(!el||!Vpn||!Vpn.isIgnoringBatteryOptimizations) return;
+  try{
+    const r=await Vpn.isIgnoringBatteryOptimizations();
+    if(r&&r.on) el.textContent='РАЗРЕШЕНО · РАБОТАЕТ В ФОНЕ';
+  }catch(e){}
+}
+
+async function requestBatteryIgnore(){
+  if(!Vpn||!Vpn.requestIgnoreBatteryOptimizations){ toast('Доступно только в приложении на устройстве'); return; }
+  try{
+    const r=await Vpn.requestIgnoreBatteryOptimizations();
+    if(r&&r.alreadyIgnored){ toast('Уже разрешено'); }
+    setTimeout(initBatteryStatus, 1500);
+  }catch(e){ dbg('battery opt err: '+e); toast('Открыл настройки приложения — включите вручную'); }
+}
+
+  const on=!btn.classList.contains('on');
+  btn.classList.toggle('on',on);
+  await pushLockBehavior();
+  toast(on?'Переподключение при разблокировке включено':'Переподключение при разблокировке выключено');
+}
+
 let appsCache=null;
 const splitSelected=new Set(JSON.parse(localStorage.getItem('mise_splitApps')||'[]'));
 function splitMode(){ return localStorage.getItem('mise_splitMode')||'off'; }
