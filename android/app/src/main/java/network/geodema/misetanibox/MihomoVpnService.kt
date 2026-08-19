@@ -174,18 +174,19 @@ class MihomoVpnService : VpnService() {
                 usedCache = true
                 android.util.Log.i("Misetanibox", "подписка недоступна ($reason) — использую последний закэшированный конфиг")
             } else {
-               config = try {
-            Subscription.convert(fetched.body).config
-        } catch (e: Exception) {
-            val cached = readCachedConfig()
-            if (cached == null) {
-                broadcast("error", "конфиг подписки не разобран: " + (e.message ?: "неизвестный формат"))
-                return
+                config = try {
+                    Subscription.convert(fetched.body).config
+                } catch (e: Exception) {
+                    val cached = readCachedConfig()
+                    if (cached == null) {
+                        broadcast("error", "конфиг подписки не разобран: " + (e.message ?: "неизвестный формат"))
+                        return
+                    }
+                    usedCache = true
+                    android.util.Log.i("Misetanibox", "новый конфиг не разобрался (${e.message}) – использую последний закэшированный")
+                    cached
+                }
             }
-            usedCache = true
-            android.util.Log.i("Misetanibox", "новый конфиг не разобрался (${e.message}) – использую последний закэшированный")
-            cached
-        }
             if (usedCache) {
                 broadcast("cached", "подписка недоступна — работаю на последнем сохранённом конфиге")
             } else {
