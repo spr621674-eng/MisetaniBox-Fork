@@ -1,4 +1,4 @@
-package network.geodema.misetanibox
+package network.geodema.misetanibox2
 
 import android.app.PendingIntent
 import android.content.ComponentName
