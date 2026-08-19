@@ -1,5 +1,5 @@
 {
-  "appId": "network.geodema.misetanibox2",
+  "appId": "network.geodema.misetanibox.fork",
   "appName": "Misetanibox",
   "webDir": "www",
   "android": { "allowMixedContent": true }
