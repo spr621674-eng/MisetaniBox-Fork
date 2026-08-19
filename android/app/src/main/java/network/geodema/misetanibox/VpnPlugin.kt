@@ -69,9 +69,7 @@ class VpnPlugin : Plugin() {
             rulesArr?.optString(i)?.let { if (it.isNotBlank()) rulesList.add(it) }
         }
         pendingRules = rulesList.toTypedArray()
-        // цепочки приходят готовым JSON-массивом [{name, entry}]
         pendingChains = call.getArray("chains", com.getcapacitor.JSArray())?.toString() ?: "[]"
-        // имена select-групп сервисов из конфигуратора селекторов
         val sgArr = call.getArray("serviceGroups", com.getcapacitor.JSArray())
         val sgList = ArrayList<String>()
         for (i in 0 until (sgArr?.length() ?: 0)) {
@@ -102,7 +100,6 @@ class VpnPlugin : Plugin() {
     }
 
     private fun launchService() {
-        // дублируем параметры в prefs, чтобы плитка/виджет/автозапуск могли поднять туннель без WebView
         VpnPrefs.saveLaunchState(
             context, pendingSubUrl, pendingHwid, pendingUserAgent, pendingSplitMode, pendingSplitApps,
             pendingRules, pendingChains, pendingServiceGroups,
@@ -133,7 +130,6 @@ class VpnPlugin : Plugin() {
         call.resolve(ret)
     }
 
-    // Отключать при блокировке / подключать при разблокировке — как у INCY.
     @PluginMethod
     fun setLockBehavior(call: PluginCall) {
         VpnPrefs.setLockDisconnect(context, call.getBoolean("disconnectOnLock", false) ?: false)
@@ -147,6 +143,36 @@ class VpnPlugin : Plugin() {
         ret.put("disconnectOnLock", VpnPrefs.isLockDisconnect(context))
         ret.put("reconnectOnUnlock", VpnPrefs.isLockReconnect(context))
         call.resolve(ret)
+    }
+
+    @PluginMethod
+    fun requestIgnoreBatteryOptimizations(call: PluginCall) {
+        try {
+            val pm = context.getSystemService(Context.POWER_SERVICE) as android.os.PowerManager
+            if (pm.isIgnoringBatteryOptimizations(context.packageName)) {
+                call.resolve(JSObject().put("alreadyIgnored", true))
+                return
+            }
+            val i = Intent(android.provider.Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS)
+            i.data = android.net.Uri.parse("package:" + context.packageName)
+            i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            context.startActivity(i)
+            call.resolve(JSObject().put("alreadyIgnored", false))
+        } catch (e: Exception) {
+            try {
+                val i = Intent(android.provider.Settings.ACTION_APPLICATION_DETAILS_SETTINGS)
+                i.data = android.net.Uri.parse("package:" + context.packageName)
+                i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                context.startActivity(i)
+            } catch (_: Exception) {}
+            call.reject(e.message ?: "не удалось открыть настройки")
+        }
+    }
+
+    @PluginMethod
+    fun isIgnoringBatteryOptimizations(call: PluginCall) {
+        val pm = context.getSystemService(Context.POWER_SERVICE) as android.os.PowerManager
+        call.resolve(JSObject().put("on", pm.isIgnoringBatteryOptimizations(context.packageName)))
     }
 
     @PluginMethod
@@ -164,8 +190,6 @@ class VpnPlugin : Plugin() {
         call.resolve(ret)
     }
 
-    // Список установленных приложений с иконкой запуска (для раздельного туннелирования).
-    // Берём только приложения с LAUNCHER-активностью (пользовательские), своё исключаем.
     @PluginMethod
     fun listApps(call: PluginCall) {
         Thread {
@@ -193,12 +217,6 @@ class VpnPlugin : Plugin() {
         }.start()
     }
 
-    // Скачать подписку (для превью серверов до подключения) через нативный HTTP,
-    // с настраиваемым UA (панели отдают формат конфига по UA) и HWID-заголовками.
-    //
-    // Наружу отдаём УЖЕ сконвертированный YAML: интерфейсу не нужно знать, что
-    // панель прислала — Xray JSON, список ссылок или готовый mihomo-конфиг. Формат
-    // и счётчики уходят рядом, чтобы их было видно в подписках и в диагностике.
     @PluginMethod
     fun fetchSub(call: PluginCall) {
         val url = call.getString("url") ?: ""
@@ -226,8 +244,6 @@ class VpnPlugin : Plugin() {
                 for (n in converted.names) names.put(n)
                 ret.put("names", names)
             } catch (e: Exception) {
-                // Формат не разобрался — отдаём тело как есть, чтобы превью могло
-                // хотя бы попробовать вытащить имена, и говорим почему.
                 ret.put("body", fetched.body)
                 ret.put("error", e.message ?: "формат подписки не распознан")
             }
@@ -235,8 +251,6 @@ class VpnPlugin : Plugin() {
         }.start()
     }
 
-    // Прокси к API ядра mihomo (external-controller) через нативный HTTP,
-    // чтобы обойти CORS/mixed-content ограничения WebView.
     @PluginMethod
     fun coreRequest(call: PluginCall) {
         val method = (call.getString("method") ?: "GET").uppercase()
