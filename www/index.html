@@ -537,8 +537,8 @@ if(Vpn && Vpn.addListener){
     dbg('событие: '+s.state+(s.message?' — '+s.message:''));
     if(s.state==='diag'){ dbg('ядро: '+String(s.message||'').trim().replace(/\n/g,' | ')); return; }
     if(s.state==='connected') setUiConnected(true);
+    else if(s.state==='cached'){ setUiConnected(true); toast('⚠ '+(s.message||'работаю на закэшированной подписке')); }
     else if(s.state==='disconnected') setUiConnected(false);
-    else if(s.state==='error'){ setUiConnected(false); toast('VPN: '+(s.message||'ошибка')); }
   });
 }
 
