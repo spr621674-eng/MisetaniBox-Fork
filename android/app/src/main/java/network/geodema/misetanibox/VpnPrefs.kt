@@ -35,6 +35,27 @@ object VpnPrefs {
     const val KEY_LOCK_DISCONNECT = "lock_disconnect"
     /** Поднимать туннель заново при разблокировке — работает только вместе с KEY_LOCK_DISCONNECT */
     const val KEY_LOCK_RECONNECT = "lock_reconnect"
+    /** Пакет приложения-триггера для автовключения VPN (пусто = функция выключена) */
+    const val KEY_APP_TRIGGER_PKG = "app_trigger_pkg"
+    /** Отображаемое имя приложения-триггера (для текста уведомления) */
+    const val KEY_APP_TRIGGER_LABEL = "app_trigger_label"
+    /** Экономичный режим: реже опрашивает ядро, меньше будит систему */
+    const val KEY_BATTERY_SAVER = "battery_saver"
+
+    fun appTriggerPackage(ctx: Context): String = prefs(ctx).getString(KEY_APP_TRIGGER_PKG, "") ?: ""
+    fun appTriggerLabel(ctx: Context): String = prefs(ctx).getString(KEY_APP_TRIGGER_LABEL, "") ?: ""
+
+    fun setAppTrigger(ctx: Context, pkg: String, label: String) {
+        prefs(ctx).edit()
+            .putString(KEY_APP_TRIGGER_PKG, pkg)
+            .putString(KEY_APP_TRIGGER_LABEL, label)
+            .apply()
+    }
+
+    fun isBatterySaver(ctx: Context): Boolean = prefs(ctx).getBoolean(KEY_BATTERY_SAVER, false)
+    fun setBatterySaver(ctx: Context, on: Boolean) {
+        prefs(ctx).edit().putBoolean(KEY_BATTERY_SAVER, on).apply()
+    }
 
     fun prefs(ctx: Context) = ctx.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
 
