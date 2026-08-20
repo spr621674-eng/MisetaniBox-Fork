@@ -1,4 +1,4 @@
-package network.geodema.misetanibox2
+package network.geodema.misetanibox
 
 import android.content.Context
 import android.content.Intent
