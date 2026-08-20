@@ -35,20 +35,29 @@ object VpnPrefs {
     const val KEY_LOCK_DISCONNECT = "lock_disconnect"
     /** Поднимать туннель заново при разблокировке — работает только вместе с KEY_LOCK_DISCONNECT */
     const val KEY_LOCK_RECONNECT = "lock_reconnect"
-    /** Пакет приложения-триггера для автовключения VPN (пусто = функция выключена) */
-    const val KEY_APP_TRIGGER_PKG = "app_trigger_pkg"
-    /** Отображаемое имя приложения-триггера (для текста уведомления) */
-    const val KEY_APP_TRIGGER_LABEL = "app_trigger_label"
+    /** JSON-массив имён пакетов приложений-триггеров для автовключения VPN (пусто = функция выключена) */
+    const val KEY_APP_TRIGGER_PKGS = "app_trigger_pkgs"
     /** Экономичный режим: реже опрашивает ядро, меньше будит систему */
     const val KEY_BATTERY_SAVER = "battery_saver"
 
-    fun appTriggerPackage(ctx: Context): String = prefs(ctx).getString(KEY_APP_TRIGGER_PKG, "") ?: ""
-    fun appTriggerLabel(ctx: Context): String = prefs(ctx).getString(KEY_APP_TRIGGER_LABEL, "") ?: ""
+    fun appTriggerPackages(ctx: Context): Set<String> {
+        val raw = prefs(ctx).getString(KEY_APP_TRIGGER_PKGS, "[]") ?: "[]"
+        return try {
+            val arr = JSONArray(raw)
+            val out = HashSet<String>()
+            for (i in 0 until arr.length()) {
+                val p = arr.optString(i, "").trim()
+                if (p.isNotEmpty()) out.add(p)
+            }
+            out
+        } catch (_: Exception) {
+            emptySet()
+        }
+    }
 
-    fun setAppTrigger(ctx: Context, pkg: String, label: String) {
+    fun setAppTriggerPackages(ctx: Context, pkgs: Collection<String>) {
         prefs(ctx).edit()
-            .putString(KEY_APP_TRIGGER_PKG, pkg)
-            .putString(KEY_APP_TRIGGER_LABEL, label)
+            .putString(KEY_APP_TRIGGER_PKGS, JSONArray(pkgs.toList()).toString())
             .apply()
     }
 
