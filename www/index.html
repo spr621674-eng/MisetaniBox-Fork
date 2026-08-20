@@ -70,6 +70,7 @@ body{background:var(--bg);color:var(--fg);font-family:'Inter Tight',sans-serif;o
 .toggle::after{content:"";position:absolute;top:3px;left:3px;width:18px;height:18px;border-radius:50%;background:var(--dim);transition:.15s}
 .toggle.on{background:var(--fg);border-color:var(--fg)}
 .toggle.on::after{left:23px;background:var(--bg)}
+.info-i{display:inline-flex;align-items:center;justify-content:center;width:15px;height:15px;margin-left:5px;border-radius:50%;border:1px solid var(--mut);color:var(--mut);font-size:10px;font-style:normal;cursor:pointer;vertical-align:1px}
 
 /* НИЖНЯЯ НАВИГАЦИЯ */
 .nav{display:flex;border-top:1px solid var(--fg);flex:none}
@@ -210,6 +211,8 @@ body{background:var(--bg);color:var(--fg);font-family:'Inter Tight',sans-serif;o
     <div class="row"><div class="grow"><div class="t">Отключать при блокировке</div><div class="s">РАЗРЫВАТЬ ПРИ БЛОКИРОВКЕ ЭКРАНА</div></div><button class="toggle" id="tgl-lock-disconnect" onclick="toggleLockDisconnect(this)"></button></div>
     <div class="row"><div class="grow"><div class="t">Подключать при разблокировке</div><div class="s">АВТОМАТИЧЕСКИ ПЕРЕПОДКЛЮЧАТЬСЯ ПОСЛЕ РАЗБЛОКИРОВКИ</div></div><button class="toggle" id="tgl-lock-reconnect" onclick="toggleLockReconnect(this)"></button></div>
     <div class="row" onclick="requestBatteryIgnore()"><div class="grow"><div class="t">Отключить оптимизацию батареи</div><div class="s" id="batt-sub">НУЖНО, ЧТОБЫ БЛОКИРОВКА ЭКРАНА РАБОТАЛА В ФОНЕ</div></div><span class="chev">›</span></div>
+    <div class="row"><div class="grow"><div class="t">Экономичный режим<i class="info-i" onclick="event.stopPropagation();showInfo('Экономичный режим','Приложение реже опрашивает ядро о трафике и списке серверов, пока экран открыт — это снижает нагрузку на процессор и число фоновых будильников. Скорость и стабильность самого VPN-соединения не меняются, экономия только на служебных проверках интерфейса.')">ⓘ</i></div><div class="s">РЕЖЕ ОБНОВЛЯЕТ ИНТЕРФЕЙС — МЕНЬШЕ РАСХОД БАТАРЕИ</div></div><button class="toggle" id="tgl-battery-saver" onclick="toggleBatterySaver(this)"></button></div>
+    <div class="row" onclick="go('trigger')"><div class="grow"><div class="t">Автовключение по приложению<i class="info-i" onclick="event.stopPropagation();showInfo('Автовключение по приложению','Выберите приложение — VPN включится сам, когда вы его откроете, и выключится, когда вы из него выйдете (если вы не включали VPN вручную сами до этого). Работает через отдельное фоновое наблюдение за экраном, поэтому в шторке появится второе уведомление — так требует Android для любого фонового процесса, убрать его нельзя.')">ⓘ</i></div><div class="s" id="trigger-sub">ВЫКЛЮЧЕНО</div></div><span class="chev">›</span></div>
     <div class="list-note" style="padding:10px 4px 0">Плитка в шторке и виджет на рабочем столе включают VPN одним тапом — добавь их через системное меню.</div>
     <div class="row"><div class="grow"><div class="t">Тема</div><div class="s">ТЁМНАЯ / СВЕТЛАЯ</div></div><span class="chev" onclick="toggleTheme()">◐</span></div>
     <div class="row" style="display:block">
@@ -232,6 +235,27 @@ body{background:var(--bg);color:var(--fg);font-family:'Inter Tight',sans-serif;o
     <div class="list-note" id="split-hint" style="padding:12px 4px">Весь трафик идёт через VPN.</div>
     <input id="apps-search" class="apps-search" type="text" placeholder="Поиск приложения…" autocapitalize="off" autocorrect="off" spellcheck="false" oninput="renderAppList()">
     <div class="app-list" id="app-list"><div class="list-note">Загрузка списка приложений…</div></div>
+  </div>
+
+  <!-- АВТОВКЛЮЧЕНИЕ ПО ПРИЛОЖЕНИЮ -->
+  <div class="view hidden" id="view-trigger">
+    <div class="back-row" onclick="go('settings')"><span class="bk">‹</span><div class="sec-title" style="margin:0">Автовключение по приложению</div></div>
+    <div class="sec-sub">VPN ВКЛЮЧИТСЯ ПРИ ОТКРЫТИИ, ВЫКЛЮЧИТСЯ ПРИ ВЫХОДЕ</div>
+    <div class="row"><div class="grow"><div class="t">Включить функцию</div><div class="s" id="trigger-enabled-sub">СНАЧАЛА ВЫБЕРИТЕ ПРИЛОЖЕНИЕ НИЖЕ</div></div><button class="toggle" id="tgl-trigger-enabled" onclick="toggleTriggerEnabled(this)"></button></div>
+    <div class="row" onclick="requestUsageAccess()"><div class="grow"><div class="t">Доступ к статистике использования</div><div class="s" id="usage-access-sub">ПРОВЕРКА…</div></div><span class="chev">›</span></div>
+    <div class="list-note">Приложение-триггер сейчас: <span id="trigger-current">не выбрано</span></div>
+    <input id="trigger-search" class="apps-search" type="text" placeholder="Поиск приложения…" autocapitalize="off" autocorrect="off" spellcheck="false" oninput="renderTriggerAppList()">
+    <div id="trigger-app-list"><div class="list-note">Загрузка списка приложений…</div></div>
+  </div>
+
+  <div class="sub-modal hidden" id="info-modal" onclick="if(event.target===this)closeInfoModal()">
+    <div class="sub-modal-card">
+      <div class="sub-modal-title" id="info-title"></div>
+      <div class="list-note" id="info-text" style="padding:12px 0 0"></div>
+      <div class="sub-modal-btns">
+        <button class="sub-btn primary" onclick="closeInfoModal()">Понятно</button>
+      </div>
+    </div>
   </div>
 
   <div class="sub-modal hidden" id="sub-modal" onclick="if(event.target===this)closeSubModal()">
@@ -389,7 +413,15 @@ function go(t){
   if(t==='rules'){ applyPresetUi(); renderRules(); }
   if(t==='chains') renderChains();
   if(t==='apps') openAppsScreen();
+  if(t==='trigger') openTriggerScreen();
 }
+
+function showInfo(title, text){
+  document.getElementById('info-title').textContent=title;
+  document.getElementById('info-text').textContent=text;
+  document.getElementById('info-modal').classList.remove('hidden');
+}
+function closeInfoModal(){ document.getElementById('info-modal').classList.add('hidden'); }
 
 // ---------- Capacitor: нативный VPN-плагин ----------
 const BUILD = 'v0.19.0';
@@ -720,7 +752,7 @@ async function waitForServers(){
       if(i===3){ core('PUT','/providers/proxies/main'); } // подтолкнуть обновление провайдера
     }
     loadProxies();
-    await sleep(1500);
+    await sleep(batterySaverOn?3000:1500);
   }
 }
 async function selectNode(group, name){
@@ -1013,6 +1045,94 @@ async function requestBatteryIgnore(){
   }catch(e){ dbg('battery opt err: '+e); toast('Открыл настройки приложения — включите вручную'); }
 }
 
+// ---------- экономичный режим (интервалы опроса зависят от этого флага) ----------
+let batterySaverOn=false;
+async function initBatterySaver(){
+  if(!Vpn||!Vpn.getBatterySaver) return;
+  try{
+    const r=await Vpn.getBatterySaver();
+    batterySaverOn=!!(r&&r.on);
+    const b=document.getElementById('tgl-battery-saver'); if(b) b.classList.toggle('on', batterySaverOn);
+  }catch(e){}
+}
+async function toggleBatterySaver(btn){
+  const on=!btn.classList.contains('on');
+  btn.classList.toggle('on',on);
+  batterySaverOn=on;
+  if(Vpn&&Vpn.setBatterySaver){ try{ await Vpn.setBatterySaver({on}); }catch(e){ dbg('setBatterySaver err: '+e); } }
+  toast(on?'Экономичный режим включён':'Экономичный режим выключен');
+}
+
+// ---------- автовключение VPN по приложению ----------
+let triggerPkg='', triggerLabel='';
+async function initTrigger(){
+  if(!Vpn||!Vpn.getAppTrigger) return;
+  try{
+    const r=await Vpn.getAppTrigger();
+    triggerPkg=(r&&r.pkg)||''; triggerLabel=(r&&r.label)||'';
+    refreshTriggerSub();
+    const en=document.getElementById('tgl-trigger-enabled');
+    if(en) en.classList.toggle('on', !!(r&&r.watcherRunning));
+  }catch(e){}
+}
+function refreshTriggerSub(){
+  const sub=document.getElementById('trigger-sub'); if(sub) sub.textContent = triggerPkg ? ('ВЫБРАНО · '+(triggerLabel||triggerPkg).toUpperCase()) : 'ВЫКЛЮЧЕНО';
+  const cur=document.getElementById('trigger-current'); if(cur) cur.textContent = triggerPkg ? (triggerLabel||triggerPkg) : 'не выбрано';
+}
+async function refreshUsageAccessUi(){
+  const el=document.getElementById('usage-access-sub'); if(!el||!Vpn||!Vpn.hasUsageAccess) return;
+  try{
+    const r=await Vpn.hasUsageAccess();
+    el.textContent = (r&&r.on) ? 'РАЗРЕШЕНО' : 'НАЖМИТЕ, ЧТОБЫ РАЗРЕШИТЬ';
+  }catch(e){}
+}
+async function requestUsageAccess(){
+  if(!Vpn||!Vpn.requestUsageAccess){ toast('Доступно только в приложении на устройстве'); return; }
+  try{ await Vpn.requestUsageAccess(); setTimeout(refreshUsageAccessUi, 1500); }catch(e){}
+}
+async function openTriggerScreen(){
+  refreshTriggerSub();
+  await refreshUsageAccessUi();
+  if(!appsCache) await loadAppList(); else renderTriggerAppList();
+}
+function renderTriggerAppList(){
+  const list=document.getElementById('trigger-app-list'); if(!list) return;
+  if(!appsCache){ return; }
+  if(!appsCache.length){ list.innerHTML='<div class="list-note">Не удалось получить список приложений.</div>'; return; }
+  const q=(document.getElementById('trigger-search').value||'').trim().toLowerCase();
+  const items=appsCache.filter(a=>!q || (a.label||'').toLowerCase().includes(q) || (a.package||'').toLowerCase().includes(q));
+  if(!items.length){ list.innerHTML='<div class="list-note">Ничего не найдено.</div>'; return; }
+  list.innerHTML=items.map(a=>{
+    const on=a.package===triggerPkg;
+    const mono=(a.label||a.package||'?').trim().charAt(0);
+    return `<div class="app-row" onclick="pickTriggerApp('${a.package.replace(/'/g,"\\'")}','${(a.label||a.package).replace(/'/g,"\\'")}')">
+      <div class="app-mono">${esc(mono)}</div>
+      <div class="grow"><div class="t">${esc(a.label||a.package)}</div><div class="s">${esc(a.package)}</div></div>
+      <div class="chk${on?' on':''}">✓</div></div>`;
+  }).join('');
+}
+async function pickTriggerApp(pkg,label){
+  triggerPkg=pkg; triggerLabel=label;
+  if(Vpn&&Vpn.setAppTrigger){ try{ await Vpn.setAppTrigger({pkg,label}); }catch(e){ dbg('setAppTrigger err: '+e); } }
+  refreshTriggerSub();
+  renderTriggerAppList();
+  toast('Триггер: '+label);
+}
+async function toggleTriggerEnabled(btn){
+  const on=!btn.classList.contains('on');
+  if(on && !triggerPkg){ toast('Сначала выберите приложение из списка ниже'); return; }
+  if(on){
+    const r=Vpn&&Vpn.hasUsageAccess?await Vpn.hasUsageAccess().catch(()=>null):null;
+    if(!r||!r.on){ toast('Сначала разрешите доступ к статистике использования'); return; }
+    try{ await Vpn.startAppWatcher(); btn.classList.add('on'); toast('Автовключение по «'+triggerLabel+'» запущено'); }
+    catch(e){ toast('Не удалось запустить: '+(e&&e.message?e.message:e)); }
+  }else{
+    try{ await Vpn.stopAppWatcher(); }catch(e){}
+    btn.classList.remove('on');
+    toast('Автовключение выключено');
+  }
+}
+
 // ---------- раздельный туннель по приложениям ----------
 let appsCache=null; // [{package,label}]
 const splitSelected=new Set(JSON.parse(localStorage.getItem('mise_splitApps')||'[]'));
@@ -1130,7 +1250,7 @@ function startTraffic(){
       totalUp=r.data.uploadTotal||0; totalDown=r.data.downloadTotal||0;
       const el=document.getElementById('sess-data'); if(el) el.textContent=fmtBytes(totalUp+totalDown);
     }
-  }, 3000);
+  }, batterySaverOn?9000:3000);
 }
 function stopTraffic(){ clearInterval(trafTimer); trafTimer=null; const el=document.getElementById('sess-data'); if(el) el.textContent='0 Б'; }
 
@@ -1151,6 +1271,8 @@ refreshSplitSub();
 initAutostart();
 initLockBehavior();
 initBatteryStatus();
+initBatterySaver();
+initTrigger();
 applyUaSub();
 renderSubs();
 setUiConnected(false);
