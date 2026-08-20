@@ -199,22 +199,26 @@ class VpnPlugin : Plugin() {
         call.resolve()
     }
 
-    // ---------- автовключение VPN по приложению ----------
-    // pkg="" отключает функцию (AppWatcherService сам ничего не делает без триггера,
-    // но и сам сервис лучше не гонять в фоне, когда функция выключена — см. stopAppWatcher).
+    // ---------- автовключение VPN по приложению (можно выбрать несколько) ----------
+    // пустой список отключает функцию (AppWatcherService сам ничего не делает без
+    // триггеров, но сам сервис лучше не гонять в фоне, когда список пуст — см. stopAppWatcher).
     @PluginMethod
-    fun setAppTrigger(call: PluginCall) {
-        val pkg = call.getString("pkg", "") ?: ""
-        val label = call.getString("label", "") ?: ""
-        VpnPrefs.setAppTrigger(context, pkg, label)
+    fun setAppTriggers(call: PluginCall) {
+        val arr = call.getArray("pkgs", com.getcapacitor.JSArray())
+        val list = ArrayList<String>()
+        for (i in 0 until (arr?.length() ?: 0)) {
+            arr?.optString(i)?.let { if (it.isNotBlank()) list.add(it) }
+        }
+        VpnPrefs.setAppTriggerPackages(context, list)
         call.resolve()
     }
 
     @PluginMethod
-    fun getAppTrigger(call: PluginCall) {
+    fun getAppTriggers(call: PluginCall) {
         val ret = JSObject()
-        ret.put("pkg", VpnPrefs.appTriggerPackage(context))
-        ret.put("label", VpnPrefs.appTriggerLabel(context))
+        val arr = com.getcapacitor.JSArray()
+        for (p in VpnPrefs.appTriggerPackages(context)) arr.put(p)
+        ret.put("pkgs", arr)
         ret.put("watcherRunning", AppWatcherService.isRunning)
         call.resolve(ret)
     }
