@@ -1,4 +1,4 @@
-package network.geodema.misetanibox2
+package network.geodema.misetanibox
 
 import android.app.Activity
 import android.content.BroadcastReceiver
