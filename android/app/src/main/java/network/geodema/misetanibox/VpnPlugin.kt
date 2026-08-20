@@ -69,7 +69,9 @@ class VpnPlugin : Plugin() {
             rulesArr?.optString(i)?.let { if (it.isNotBlank()) rulesList.add(it) }
         }
         pendingRules = rulesList.toTypedArray()
+        // цепочки приходят готовым JSON-массивом [{name, entry}]
         pendingChains = call.getArray("chains", com.getcapacitor.JSArray())?.toString() ?: "[]"
+        // имена select-групп сервисов из конфигуратора селекторов
         val sgArr = call.getArray("serviceGroups", com.getcapacitor.JSArray())
         val sgList = ArrayList<String>()
         for (i in 0 until (sgArr?.length() ?: 0)) {
@@ -100,6 +102,7 @@ class VpnPlugin : Plugin() {
     }
 
     private fun launchService() {
+        // дублируем параметры в prefs, чтобы плитка/виджет/автозапуск могли поднять туннель без WebView
         VpnPrefs.saveLaunchState(
             context, pendingSubUrl, pendingHwid, pendingUserAgent, pendingSplitMode, pendingSplitApps,
             pendingRules, pendingChains, pendingServiceGroups,
@@ -130,6 +133,7 @@ class VpnPlugin : Plugin() {
         call.resolve(ret)
     }
 
+    // Отключать при блокировке / подключать при разблокировке — как у INCY.
     @PluginMethod
     fun setLockBehavior(call: PluginCall) {
         VpnPrefs.setLockDisconnect(context, call.getBoolean("disconnectOnLock", false) ?: false)
@@ -145,6 +149,12 @@ class VpnPlugin : Plugin() {
         call.resolve(ret)
     }
 
+    // Открыть системный диалог «не ограничивать батарею для этого приложения».
+    // Работает одинаково на любой марке телефона (это стандартный API Android,
+    // а не что-то специфичное для MIUI/One UI/EMUI) — но на некоторых прошивках
+    // (особенно MIUI) производитель может проигнорировать выданное разрешение
+    // и всё равно душить фон своими средствами, поэтому кнопку стоит дополнять
+    // подсказкой проверить ручные настройки бренда.
     @PluginMethod
     fun requestIgnoreBatteryOptimizations(call: PluginCall) {
         try {
@@ -159,6 +169,8 @@ class VpnPlugin : Plugin() {
             context.startActivity(i)
             call.resolve(JSObject().put("alreadyIgnored", false))
         } catch (e: Exception) {
+            // на части прошивок (особенно MIUI) системный диалог может отсутствовать —
+            // тогда сразу открываем общий экран настроек приложения как запасной вариант
             try {
                 val i = Intent(android.provider.Settings.ACTION_APPLICATION_DETAILS_SETTINGS)
                 i.data = android.net.Uri.parse("package:" + context.packageName)
@@ -173,6 +185,80 @@ class VpnPlugin : Plugin() {
     fun isIgnoringBatteryOptimizations(call: PluginCall) {
         val pm = context.getSystemService(Context.POWER_SERVICE) as android.os.PowerManager
         call.resolve(JSObject().put("on", pm.isIgnoringBatteryOptimizations(context.packageName)))
+    }
+
+    // ---------- экономичный режим ----------
+    @PluginMethod
+    fun getBatterySaver(call: PluginCall) {
+        call.resolve(JSObject().put("on", VpnPrefs.isBatterySaver(context)))
+    }
+
+    @PluginMethod
+    fun setBatterySaver(call: PluginCall) {
+        VpnPrefs.setBatterySaver(context, call.getBoolean("on", false) ?: false)
+        call.resolve()
+    }
+
+    // ---------- автовключение VPN по приложению ----------
+    // pkg="" отключает функцию (AppWatcherService сам ничего не делает без триггера,
+    // но и сам сервис лучше не гонять в фоне, когда функция выключена — см. stopAppWatcher).
+    @PluginMethod
+    fun setAppTrigger(call: PluginCall) {
+        val pkg = call.getString("pkg", "") ?: ""
+        val label = call.getString("label", "") ?: ""
+        VpnPrefs.setAppTrigger(context, pkg, label)
+        call.resolve()
+    }
+
+    @PluginMethod
+    fun getAppTrigger(call: PluginCall) {
+        val ret = JSObject()
+        ret.put("pkg", VpnPrefs.appTriggerPackage(context))
+        ret.put("label", VpnPrefs.appTriggerLabel(context))
+        ret.put("watcherRunning", AppWatcherService.isRunning)
+        call.resolve(ret)
+    }
+
+    @PluginMethod
+    fun hasUsageAccess(call: PluginCall) {
+        call.resolve(JSObject().put("on", hasUsageAccess(context)))
+    }
+
+    // Разрешение PACKAGE_USAGE_STATS особое — единственный способ его выдать —
+    // системный список приложений с доступом к статистике использования. Открываем
+    // сразу список; попасть на конкретно нашу карточку программно нельзя.
+    @PluginMethod
+    fun requestUsageAccess(call: PluginCall) {
+        try {
+            val i = Intent(android.provider.Settings.ACTION_USAGE_ACCESS_SETTINGS)
+            i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            context.startActivity(i)
+            call.resolve()
+        } catch (e: Exception) {
+            call.reject(e.message ?: "не удалось открыть настройки")
+        }
+    }
+
+    @PluginMethod
+    fun startAppWatcher(call: PluginCall) {
+        if (!hasUsageAccess(context)) {
+            call.reject("нет доступа к статистике использования")
+            return
+        }
+        val i = Intent(context, AppWatcherService::class.java)
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) context.startForegroundService(i) else context.startService(i)
+        call.resolve()
+    }
+
+    @PluginMethod
+    fun stopAppWatcher(call: PluginCall) {
+        context.stopService(Intent(context, AppWatcherService::class.java))
+        call.resolve()
+    }
+
+    @PluginMethod
+    fun isAppWatcherRunning(call: PluginCall) {
+        call.resolve(JSObject().put("on", AppWatcherService.isRunning))
     }
 
     @PluginMethod
@@ -190,6 +276,8 @@ class VpnPlugin : Plugin() {
         call.resolve(ret)
     }
 
+    // Список установленных приложений с иконкой запуска (для раздельного туннелирования).
+    // Берём только приложения с LAUNCHER-активностью (пользовательские), своё исключаем.
     @PluginMethod
     fun listApps(call: PluginCall) {
         Thread {
@@ -217,6 +305,12 @@ class VpnPlugin : Plugin() {
         }.start()
     }
 
+    // Скачать подписку (для превью серверов до подключения) через нативный HTTP,
+    // с настраиваемым UA (панели отдают формат конфига по UA) и HWID-заголовками.
+    //
+    // Наружу отдаём УЖЕ сконвертированный YAML: интерфейсу не нужно знать, что
+    // панель прислала — Xray JSON, список ссылок или готовый mihomo-конфиг. Формат
+    // и счётчики уходят рядом, чтобы их было видно в подписках и в диагностике.
     @PluginMethod
     fun fetchSub(call: PluginCall) {
         val url = call.getString("url") ?: ""
@@ -244,6 +338,8 @@ class VpnPlugin : Plugin() {
                 for (n in converted.names) names.put(n)
                 ret.put("names", names)
             } catch (e: Exception) {
+                // Формат не разобрался — отдаём тело как есть, чтобы превью могло
+                // хотя бы попробовать вытащить имена, и говорим почему.
                 ret.put("body", fetched.body)
                 ret.put("error", e.message ?: "формат подписки не распознан")
             }
@@ -251,6 +347,8 @@ class VpnPlugin : Plugin() {
         }.start()
     }
 
+    // Прокси к API ядра mihomo (external-controller) через нативный HTTP,
+    // чтобы обойти CORS/mixed-content ограничения WebView.
     @PluginMethod
     fun coreRequest(call: PluginCall) {
         val method = (call.getString("method") ?: "GET").uppercase()
