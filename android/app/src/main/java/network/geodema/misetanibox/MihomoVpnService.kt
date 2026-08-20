@@ -1,4 +1,4 @@
-package network.geodema.misetanibox2
+package network.geodema.misetanibox
 
 import android.app.Notification
 import android.app.NotificationChannel
