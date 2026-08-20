@@ -2,7 +2,7 @@ apply plugin: 'com.android.application'
 apply plugin: 'kotlin-android'
 
 android {
-    namespace "network.geodema.misetanibox.fork"
+    namespace "network.geodema.misetanibox"
     compileSdk rootProject.ext.compileSdkVersion
     defaultConfig {
         applicationId "network.geodema.misetanibox.fork"
