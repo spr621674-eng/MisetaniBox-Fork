@@ -97,18 +97,18 @@ class AppWatcherService : Service() {
     }
 
     private fun onForegroundChanged(pkg: String) {
-        val trigger = VpnPrefs.appTriggerPackage(this)
-        if (trigger.isEmpty()) return
+        val triggers = VpnPrefs.appTriggerPackages(this)
+        if (triggers.isEmpty()) return
         if (pkg == packageName) return // сама Misetanibox/её форк в подсчёт не идёт
 
-        if (pkg == trigger) {
-            // зашли в целевое приложение — поднимаем VPN, если он ещё не работает
+        if (pkg in triggers) {
+            // зашли в одно из целевых приложений — поднимаем VPN, если он ещё не работает
             if (!MihomoVpnService.isRunning) {
                 val reason = VpnPrefs.startFromPrefs(this)
                 if (reason == null) vpnWasStartedByWatcher = true
             }
         } else {
-            // вышли из целевого приложения на что-то другое — гасим VPN, но только
+            // вышли на что-то, чего нет в списке триггеров — гасим VPN, но только
             // если это МЫ его включили; VPN, который пользователь поднял вручную сам,
             // трогать нельзя
             if (vpnWasStartedByWatcher && MihomoVpnService.isRunning) {
@@ -128,9 +128,10 @@ class AppWatcherService : Service() {
             this, 0, Intent(this, MainActivity::class.java),
             PendingIntent.FLAG_IMMUTABLE
         )
-        val trigger = VpnPrefs.appTriggerLabel(this).ifEmpty { "приложение" }
+        val count = VpnPrefs.appTriggerPackages(this).size
+        val label = if (count == 1) "1 приложением" else "$count приложениями"
         val notif: Notification = Notification.Builder(this, CHANNEL_ID)
-            .setContentTitle("Слежу за: $trigger")
+            .setContentTitle("Слежу за: $label")
             .setContentText("VPN включится/выключится автоматически")
             .setSmallIcon(R.mipmap.ic_launcher)
             .setContentIntent(pi)
