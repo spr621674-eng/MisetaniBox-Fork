@@ -37,7 +37,7 @@ body{background:var(--bg);color:var(--fg);font-family:'Inter Tight',sans-serif;o
 .view{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch}
 .view::-webkit-scrollbar{display:none}
 
-/* Р“Р›РђР’РќРђРЇ */
+/* ГЛАВНАЯ */
 .status-blk{padding:34px 24px 0}
 .status-lbl{font-family:'JetBrains Mono',monospace;font-size:9.5px;letter-spacing:.2em;color:var(--mut)}
 .status-val{font-family:'JetBrains Mono',monospace;font-size:12px;letter-spacing:.14em;color:var(--dim);margin-top:8px}
@@ -54,7 +54,7 @@ body{background:var(--bg);color:var(--fg);font-family:'Inter Tight',sans-serif;o
 .sess .cell .k{font-family:'JetBrains Mono',monospace;font-size:9px;letter-spacing:.16em;color:var(--mut)}
 .sess .cell .v{font-weight:700;font-size:22px;margin-top:4px}
 
-/* РЎРџРРЎРљР (СЃРµСЂРІРµСЂС‹/РїРѕРґРїРёСЃРєРё/РЅР°СЃС‚СЂРѕР№РєРё) */
+/* СПИСКИ (серверы/подписки/настройки) */
 .sec-title{padding:26px 24px 4px;font-weight:800;font-size:34px;letter-spacing:-.02em}
 .sec-sub{padding:0 24px 10px;font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:.14em;color:var(--mut)}
 .row{display:flex;align-items:center;gap:12px;padding:15px 24px;border-top:1px solid var(--ln);cursor:pointer}
@@ -72,14 +72,14 @@ body{background:var(--bg);color:var(--fg);font-family:'Inter Tight',sans-serif;o
 .toggle.on::after{left:23px;background:var(--bg)}
 .info-i{display:inline-flex;align-items:center;justify-content:center;width:15px;height:15px;margin-left:5px;border-radius:50%;border:1px solid var(--mut);color:var(--mut);font-size:10px;font-style:normal;cursor:pointer;vertical-align:1px}
 
-/* РќРР–РќРЇРЇ РќРђР’РР“РђР¦РРЇ */
+/* НИЖНЯЯ НАВИГАЦИЯ */
 .nav{display:flex;border-top:1px solid var(--fg);flex:none}
 .nav button{flex:1;padding:12px 0 calc(12px + env(safe-area-inset-bottom));background:none;border:none;color:var(--mut);font-family:'JetBrains Mono',monospace;font-size:9px;letter-spacing:.14em;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:5px}
 .nav button .g{font-size:15px}
 .nav button.active{color:var(--fg)}
 .hidden{display:none}
 
-/* РњРћР”РђР›РљРђ РџРћР”РџРРЎРљР */
+/* МОДАЛКА ПОДПИСКИ */
 .sub-modal{position:fixed;inset:0;background:rgba(0,0,0,.55);display:flex;align-items:flex-end;z-index:50}
 .sub-modal.hidden{display:none}
 .sub-modal-card{width:100%;background:var(--bg);border-top:1px solid var(--fg);padding:26px 24px calc(26px + env(safe-area-inset-bottom))}
@@ -126,126 +126,126 @@ body{background:var(--bg);color:var(--fg);font-family:'Inter Tight',sans-serif;o
 <div class="app">
   <div class="head">
     <div class="brand"><img src="logo.png" alt=""><span class="brand-col"><span>MISETANIBOX</span><span class="brand-face" id="brand-face">-_-</span></span></div>
-    <div class="head-r"><button class="icon-btn" onclick="toggleTheme()">в—ђ</button></div>
+    <div class="head-r"><button class="icon-btn" onclick="toggleTheme()">◐</button></div>
   </div>
 
-  <!-- Р“Р›РђР’РќРђРЇ -->
+  <!-- ГЛАВНАЯ -->
   <div class="view" id="view-home">
     <div class="status-blk">
-      <div class="status-lbl">РЎРўРђРўРЈРЎ</div>
-      <div class="status-val" id="status-val">в—‹ РћРўРљР›Р®Р§Р•РќРћ</div>
+      <div class="status-lbl">СТАТУС</div>
+      <div class="status-val" id="status-val">○ ОТКЛЮЧЕНО</div>
     </div>
     <div class="connect" id="connect" onclick="toggleConnect()">
-      <div class="big" id="connect-big">РџРћР”РљР›Р®-<br>Р§РРўР¬РЎРЇ</div>
-      <div class="sub"><span>РўРђРџ вЂ” Р—РђРџРЈРЎРљ РўРЈРќРќР•Р›РЇ</span><span id="mode-lbl" onclick="event.stopPropagation();cycleMode()">РџР РђР’РР›Рђ</span></div>
+      <div class="big" id="connect-big">ПОДКЛЮ-<br>ЧИТЬСЯ</div>
+      <div class="sub"><span>ТАП — ЗАПУСК ТУННЕЛЯ</span><span id="mode-lbl" onclick="event.stopPropagation();cycleMode()">ПРАВИЛА</span></div>
     </div>
     <div id="dbg" class="dbg" onclick="copyDbg()"></div>
     <div class="server-blk" onclick="go('servers')">
       <div class="l">
         <img class="flag" id="home-flag" src="" alt="" style="display:none">
-        <div><div class="name" id="home-name">РќРµ РІС‹Р±СЂР°РЅ</div><div class="meta" id="home-meta">РџРћР”РџРРЎРљРђ РќР• РџРћР”РљР›Р®Р§Р•РќРђ</div></div>
+        <div><div class="name" id="home-name">Не выбран</div><div class="meta" id="home-meta">ПОДПИСКА НЕ ПОДКЛЮЧЕНА</div></div>
       </div>
       <div class="ping" id="home-ping"></div>
     </div>
     <div class="sess">
-      <div class="cell"><div class="k">РЎР•РЎРЎРРЇ</div><div class="v" id="sess-time">00:00</div></div>
-      <div class="cell" style="text-align:right"><div class="k">РўР РђР¤РРљ</div><div class="v" id="sess-data">0 РњР‘</div></div>
+      <div class="cell"><div class="k">СЕССИЯ</div><div class="v" id="sess-time">00:00</div></div>
+      <div class="cell" style="text-align:right"><div class="k">ТРАФИК</div><div class="v" id="sess-data">0 МБ</div></div>
     </div>
   </div>
 
-  <!-- РЎР•Р Р’Р•Р Р« -->
+  <!-- СЕРВЕРЫ -->
   <div class="view hidden" id="view-servers">
-    <div class="sec-title">РЎРµСЂРІРµСЂС‹</div>
-    <div class="sec-sub" id="servers-sub">РќР• РџРћР”РљР›Р®Р§Р•РќРћ</div>
+    <div class="sec-title">Серверы</div>
+    <div class="sec-sub" id="servers-sub">НЕ ПОДКЛЮЧЕНО</div>
     <div id="server-list"></div>
   </div>
 
-  <!-- РџРћР”РџРРЎРљР -->
+  <!-- ПОДПИСКИ -->
   <div class="view hidden" id="view-subs">
-    <div class="sec-title">РџРѕРґРїРёСЃРєРё</div>
-    <div class="sec-sub" id="subs-count">РќР•Рў РџРћР”РџРРЎРћРљ</div>
+    <div class="sec-title">Подписки</div>
+    <div class="sec-sub" id="subs-count">НЕТ ПОДПИСОК</div>
     <div id="subs-list"></div>
-    <div class="row" style="color:var(--dim)" onclick="addSubscription()"><div class="grow"><div class="t">+ Р”РѕР±Р°РІРёС‚СЊ РїРѕРґРїРёСЃРєСѓ</div><div class="s">РўРђРџ РџРћ РџРћР”РџРРЎРљР• вЂ” РЎР”Р•Р›РђРўР¬ РђРљРўРР’РќРћР™</div></div></div>
-    <div class="row" onclick="openUaModal()"><div class="grow"><div class="t">User-Agent</div><div class="s" id="ua-sub">CLASH-META/MIHOMO</div></div><span class="chev">вЂє</span></div>
-    <div class="list-note">РџР°РЅРµР»СЊ РѕС‚РґР°С‘С‚ С„РѕСЂРјР°С‚ РєРѕРЅС„РёРіР° РїРѕ User-Agent. РљР»РёРµРЅС‚ РїРѕРЅРёРјР°РµС‚ РІСЃРµ С‚СЂРё: РєРѕРЅС„РёРі mihomo (YAML), РєРѕРЅС„РёРі Xray (JSON) Рё СЃРїРёСЃРѕРє СЃСЃС‹Р»РѕРє вЂ” РєРѕРЅРІРµСЂС‚Р°С†РёСЏ РІ С„РѕСЂРјР°С‚ СЏРґСЂР° РїСЂРѕРёСЃС…РѕРґРёС‚ РЅР° СѓСЃС‚СЂРѕР№СЃС‚РІРµ.</div>
+    <div class="row" style="color:var(--dim)" onclick="addSubscription()"><div class="grow"><div class="t">+ Добавить подписку</div><div class="s">ТАП ПО ПОДПИСКЕ — СДЕЛАТЬ АКТИВНОЙ</div></div></div>
+    <div class="row" onclick="openUaModal()"><div class="grow"><div class="t">User-Agent</div><div class="s" id="ua-sub">CLASH-META/MIHOMO</div></div><span class="chev">›</span></div>
+    <div class="list-note">Панель отдаёт формат конфига по User-Agent. Клиент понимает все три: конфиг mihomo (YAML), конфиг Xray (JSON) и список ссылок — конвертация в формат ядра происходит на устройстве.</div>
   </div>
 
-  <!-- РџР РђР’РР›Рђ -->
+  <!-- ПРАВИЛА -->
   <div class="view hidden" id="view-rules">
-    <div class="sec-title">РџСЂР°РІРёР»Р°</div>
-    <div class="sec-sub">РљРЈР”Рђ РџРЈРЎРљРђРўР¬ РўР РђР¤РРљ</div>
+    <div class="sec-title">Правила</div>
+    <div class="sec-sub">КУДА ПУСКАТЬ ТРАФИК</div>
 
-    <div class="row"><div class="grow"><div class="t">Р РѕСЃСЃРёР№СЃРєРёРµ СЃР°Р№С‚С‹ РЅР°РїСЂСЏРјСѓСЋ</div><div class="s">RU-РђР”Р Р•РЎРђ РњРРњРћ VPN</div></div>
+    <div class="row"><div class="grow"><div class="t">Российские сайты напрямую</div><div class="s">RU-АДРЕСА МИМО VPN</div></div>
       <button class="toggle" id="pr-ru" onclick="togglePreset('ru', this)"></button></div>
-    <div class="row"><div class="grow"><div class="t">Р‘Р»РѕРєРёСЂРѕРІР°С‚СЊ СЂРµРєР»Р°РјСѓ</div><div class="s">Р Р•РљР›РђРњРђ Р РўР Р•РљР•Р Р«</div></div>
+    <div class="row"><div class="grow"><div class="t">Блокировать рекламу</div><div class="s">РЕКЛАМА И ТРЕКЕРЫ</div></div>
       <button class="toggle" id="pr-ads" onclick="togglePreset('ads', this)"></button></div>
-    <div class="row"><div class="grow"><div class="t">Р›РѕРєР°Р»СЊРЅР°СЏ СЃРµС‚СЊ РЅР°РїСЂСЏРјСѓСЋ</div><div class="s">Р РћРЈРўР•Р , РџР РРќРўР•Р Р«, NAS</div></div>
+    <div class="row"><div class="grow"><div class="t">Локальная сеть напрямую</div><div class="s">РОУТЕР, ПРИНТЕРЫ, NAS</div></div>
       <button class="toggle" id="pr-lan" onclick="togglePreset('lan', this)"></button></div>
 
-    <div class="sec-title" style="font-size:22px;padding-top:22px">РЎРІРѕРё РїСЂР°РІРёР»Р°</div>
-    <div class="sec-sub" id="rules-count">РќР•Рў РЎР’РћРРҐ РџР РђР’РР›</div>
+    <div class="sec-title" style="font-size:22px;padding-top:22px">Свои правила</div>
+    <div class="sec-sub" id="rules-count">НЕТ СВОИХ ПРАВИЛ</div>
     <div id="rules-list"></div>
-    <div class="row" style="color:var(--dim)" onclick="openRuleModal()"><div class="grow"><div class="t">+ Р”РѕР±Р°РІРёС‚СЊ РїСЂР°РІРёР»Рѕ</div><div class="s">Р”РћРњР•Рќ РР›Р IP в†’ РљРЈР”Рђ</div></div></div>
+    <div class="row" style="color:var(--dim)" onclick="openRuleModal()"><div class="grow"><div class="t">+ Добавить правило</div><div class="s">ДОМЕН ИЛИ IP → КУДА</div></div></div>
 
-    <div class="list-note">РџСЂР°РІРёР»Р° РїСЂРёРјРµРЅСЏСЋС‚СЃСЏ РїСЂРё СЃР»РµРґСѓСЋС‰РµРј РїРѕРґРєР»СЋС‡РµРЅРёРё. РџРѕСЂСЏРґРѕРє: СЃРІРѕРё РїСЂР°РІРёР»Р° СЃРІРµСЂС…Сѓ, Р·Р°С‚РµРј РїСЂРµСЃРµС‚С‹, РІ РєРѕРЅС†Рµ вЂ” РІСЃС‘ РѕСЃС‚Р°Р»СЊРЅРѕРµ С‡РµСЂРµР· VPN.</div>
+    <div class="list-note">Правила применяются при следующем подключении. Порядок: свои правила сверху, затем пресеты, в конце — всё остальное через VPN.</div>
   </div>
 
 
-  <!-- Р¦Р•РџРћР§РљР -->
+  <!-- ЦЕПОЧКИ -->
   <div class="view hidden" id="view-chains">
-    <div class="back-row" onclick="go('settings')"><span class="bk">вЂ№</span><div class="sec-title" style="margin:0">Р¦РµРїРѕС‡РєРё</div></div>
-    <div class="sec-sub">РўР РђР¤РРљ Р§Р•Р Р•Р— Р”Р’Рђ РЎР•Р Р’Р•Р Рђ РџРћР”Р РЇР”</div>
+    <div class="back-row" onclick="go('settings')"><span class="bk">‹</span><div class="sec-title" style="margin:0">Цепочки</div></div>
+    <div class="sec-sub">ТРАФИК ЧЕРЕЗ ДВА СЕРВЕРА ПОДРЯД</div>
     <div id="chain-list"></div>
-    <div class="row" style="color:var(--dim)" onclick="openChainModal()"><div class="grow"><div class="t">+ РЎРѕР·РґР°С‚СЊ С†РµРїРѕС‡РєСѓ</div><div class="s">Р’Р«Р‘Р•Р Р Р’РҐРћР”РќРћР™ РЎР•Р Р’Р•Р </div></div></div>
-    <div class="list-note">Р¦РµРїРѕС‡РєР° РїРѕСЏРІРёС‚СЃСЏ РІ СЃРїРёСЃРєРµ СЃРµСЂРІРµСЂРѕРІ РєР°Рє В«рџ”— РёРјСЏВ» вЂ” РІС‹Р±РµСЂРё РµС‘, Р° РІРЅСѓС‚СЂРё СѓРєР°Р¶Рё РІС‹С…РѕРґРЅРѕР№ СЃРµСЂРІРµСЂ. РџСЂРёРјРµРЅСЏРµС‚СЃСЏ РїСЂРё СЃР»РµРґСѓСЋС‰РµРј РїРѕРґРєР»СЋС‡РµРЅРёРё.</div>
+    <div class="row" style="color:var(--dim)" onclick="openChainModal()"><div class="grow"><div class="t">+ Создать цепочку</div><div class="s">ВЫБЕРИ ВХОДНОЙ СЕРВЕР</div></div></div>
+    <div class="list-note">Цепочка появится в списке серверов как «🔗 имя» — выбери её, а внутри укажи выходной сервер. Применяется при следующем подключении.</div>
   </div>
 
-  <!-- РќРђРЎРўР РћР™РљР -->
+  <!-- НАСТРОЙКИ -->
   <div class="view hidden" id="view-settings">
-    <div class="sec-title">РќР°СЃС‚СЂРѕР№РєРё</div>
+    <div class="sec-title">Настройки</div>
     <div class="sec-sub" id="ver-sub">MISETANIBOX</div>
-    <div class="row"><div class="grow"><div class="t">Р РµР¶РёРј TUN</div><div class="s">РџРћР›РќР«Р™ РџР•Р Р•РҐР’РђРў РўР РђР¤РРљРђ</div></div><button class="toggle on" onclick="this.classList.toggle('on')"></button></div>
-    <div class="row" onclick="go('apps')"><div class="grow"><div class="t">Р Р°Р·РґРµР»СЊРЅС‹Р№ С‚СѓРЅРЅРµР»СЊ</div><div class="s" id="split-sub">РџРћ РџР РР›РћР–Р•РќРРЇРњ В· Р’Р«РљР›</div></div><span class="chev">вЂє</span></div>
-    <div class="row" onclick="go('chains')"><div class="grow"><div class="t">Р¦РµРїРѕС‡РєРё</div><div class="s" id="chains-sub">РќР•Рў Р¦Р•РџРћР§Р•Рљ</div></div><span class="chev">вЂє</span></div>
-    <div class="row"><div class="grow"><div class="t">РђРІС‚РѕР·Р°РїСѓСЃРє</div><div class="s">РџРћР”РќРЇРўР¬ РўРЈРќРќР•Р›Р¬ РџР Р Р’РљР›Р®Р§Р•РќРР РЈРЎРўР РћР™РЎРўР’Рђ</div></div><button class="toggle" id="tgl-autostart" onclick="toggleAutostart(this)"></button></div>
-    <div class="row"><div class="grow"><div class="t">РћС‚РєР»СЋС‡Р°С‚СЊ РїСЂРё Р±Р»РѕРєРёСЂРѕРІРєРµ</div><div class="s">Р РђР—Р Р«Р’РђРўР¬ РџР Р Р‘Р›РћРљРР РћР’РљР• Р­РљР РђРќРђ</div></div><button class="toggle" id="tgl-lock-disconnect" onclick="toggleLockDisconnect(this)"></button></div>
-    <div class="row"><div class="grow"><div class="t">РџРѕРґРєР»СЋС‡Р°С‚СЊ РїСЂРё СЂР°Р·Р±Р»РѕРєРёСЂРѕРІРєРµ</div><div class="s">РђР’РўРћРњРђРўРР§Р•РЎРљР РџР•Р Р•РџРћР”РљР›Р®Р§РђРўР¬РЎРЇ РџРћРЎР›Р• Р РђР—Р‘Р›РћРљРР РћР’РљР</div></div><button class="toggle" id="tgl-lock-reconnect" onclick="toggleLockReconnect(this)"></button></div>
-    <div class="row" onclick="requestBatteryIgnore()"><div class="grow"><div class="t">РћС‚РєР»СЋС‡РёС‚СЊ РѕРїС‚РёРјРёР·Р°С†РёСЋ Р±Р°С‚Р°СЂРµРё</div><div class="s" id="batt-sub">РќРЈР–РќРћ, Р§РўРћР‘Р« Р‘Р›РћРљРР РћР’РљРђ Р­РљР РђРќРђ Р РђР‘РћРўРђР›Рђ Р’ Р¤РћРќР•</div></div><span class="chev">вЂє</span></div>
-    <div class="row"><div class="grow"><div class="t">Р­РєРѕРЅРѕРјРёС‡РЅС‹Р№ СЂРµР¶РёРј<i class="info-i" onclick="event.stopPropagation();showInfo('Р­РєРѕРЅРѕРјРёС‡РЅС‹Р№ СЂРµР¶РёРј','РџСЂРёР»РѕР¶РµРЅРёРµ СЂРµР¶Рµ РѕРїСЂР°С€РёРІР°РµС‚ СЏРґСЂРѕ Рѕ С‚СЂР°С„РёРєРµ Рё СЃРїРёСЃРєРµ СЃРµСЂРІРµСЂРѕРІ, РїРѕРєР° СЌРєСЂР°РЅ РѕС‚РєСЂС‹С‚ вЂ” СЌС‚Рѕ СЃРЅРёР¶Р°РµС‚ РЅР°РіСЂСѓР·РєСѓ РЅР° РїСЂРѕС†РµСЃСЃРѕСЂ Рё С‡РёСЃР»Рѕ С„РѕРЅРѕРІС‹С… Р±СѓРґРёР»СЊРЅРёРєРѕРІ. РЎРєРѕСЂРѕСЃС‚СЊ Рё СЃС‚Р°Р±РёР»СЊРЅРѕСЃС‚СЊ СЃР°РјРѕРіРѕ VPN-СЃРѕРµРґРёРЅРµРЅРёСЏ РЅРµ РјРµРЅСЏСЋС‚СЃСЏ, СЌРєРѕРЅРѕРјРёСЏ С‚РѕР»СЊРєРѕ РЅР° СЃР»СѓР¶РµР±РЅС‹С… РїСЂРѕРІРµСЂРєР°С… РёРЅС‚РµСЂС„РµР№СЃР°.')">в“</i></div><div class="s">Р Р•Р–Р• РћР‘РќРћР’Р›РЇР•Рў РРќРўР•Р Р¤Р•Р™РЎ вЂ” РњР•РќР¬РЁР• Р РђРЎРҐРћР” Р‘РђРўРђР Р•Р</div></div><button class="toggle" id="tgl-battery-saver" onclick="toggleBatterySaver(this)"></button></div>
-    <div class="row" onclick="go('trigger')"><div class="grow"><div class="t">РђРІС‚РѕРІРєР»СЋС‡РµРЅРёРµ РїРѕ РїСЂРёР»РѕР¶РµРЅРёСЋ<i class="info-i" onclick="event.stopPropagation();showInfo('РђРІС‚РѕРІРєР»СЋС‡РµРЅРёРµ РїРѕ РїСЂРёР»РѕР¶РµРЅРёСЋ','Р’С‹Р±РµСЂРёС‚Рµ РїСЂРёР»РѕР¶РµРЅРёРµ вЂ” VPN РІРєР»СЋС‡РёС‚СЃСЏ СЃР°Рј, РєРѕРіРґР° РІС‹ РµРіРѕ РѕС‚РєСЂРѕРµС‚Рµ, Рё РІС‹РєР»СЋС‡РёС‚СЃСЏ, РєРѕРіРґР° РІС‹ РёР· РЅРµРіРѕ РІС‹Р№РґРµС‚Рµ (РµСЃР»Рё РІС‹ РЅРµ РІРєР»СЋС‡Р°Р»Рё VPN РІСЂСѓС‡РЅСѓСЋ СЃР°РјРё РґРѕ СЌС‚РѕРіРѕ). Р Р°Р±РѕС‚Р°РµС‚ С‡РµСЂРµР· РѕС‚РґРµР»СЊРЅРѕРµ С„РѕРЅРѕРІРѕРµ РЅР°Р±Р»СЋРґРµРЅРёРµ Р·Р° СЌРєСЂР°РЅРѕРј, РїРѕСЌС‚РѕРјСѓ РІ С€С‚РѕСЂРєРµ РїРѕСЏРІРёС‚СЃСЏ РІС‚РѕСЂРѕРµ СѓРІРµРґРѕРјР»РµРЅРёРµ вЂ” С‚Р°Рє С‚СЂРµР±СѓРµС‚ Android РґР»СЏ Р»СЋР±РѕРіРѕ С„РѕРЅРѕРІРѕРіРѕ РїСЂРѕС†РµСЃСЃР°, СѓР±СЂР°С‚СЊ РµРіРѕ РЅРµР»СЊР·СЏ.')">в“</i></div><div class="s" id="trigger-sub">Р’Р«РљР›Р®Р§Р•РќРћ</div></div><span class="chev">вЂє</span></div>
-    <div class="list-note" style="padding:10px 4px 0">РџР»РёС‚РєР° РІ С€С‚РѕСЂРєРµ Рё РІРёРґР¶РµС‚ РЅР° СЂР°Р±РѕС‡РµРј СЃС‚РѕР»Рµ РІРєР»СЋС‡Р°СЋС‚ VPN РѕРґРЅРёРј С‚Р°РїРѕРј вЂ” РґРѕР±Р°РІСЊ РёС… С‡РµСЂРµР· СЃРёСЃС‚РµРјРЅРѕРµ РјРµРЅСЋ.</div>
-    <div class="row"><div class="grow"><div class="t">РўРµРјР°</div><div class="s">РўРЃРњРќРђРЇ / РЎР’Р•РўР›РђРЇ</div></div><span class="chev" onclick="toggleTheme()">в—ђ</span></div>
+    <div class="row"><div class="grow"><div class="t">Режим TUN</div><div class="s">ПОЛНЫЙ ПЕРЕХВАТ ТРАФИКА</div></div><button class="toggle on" onclick="this.classList.toggle('on')"></button></div>
+    <div class="row" onclick="go('apps')"><div class="grow"><div class="t">Раздельный туннель</div><div class="s" id="split-sub">ПО ПРИЛОЖЕНИЯМ · ВЫКЛ</div></div><span class="chev">›</span></div>
+    <div class="row" onclick="go('chains')"><div class="grow"><div class="t">Цепочки</div><div class="s" id="chains-sub">НЕТ ЦЕПОЧЕК</div></div><span class="chev">›</span></div>
+    <div class="row"><div class="grow"><div class="t">Автозапуск</div><div class="s">ПОДНЯТЬ ТУННЕЛЬ ПРИ ВКЛЮЧЕНИИ УСТРОЙСТВА</div></div><button class="toggle" id="tgl-autostart" onclick="toggleAutostart(this)"></button></div>
+    <div class="row"><div class="grow"><div class="t">Отключать при блокировке</div><div class="s">РАЗРЫВАТЬ ПРИ БЛОКИРОВКЕ ЭКРАНА</div></div><button class="toggle" id="tgl-lock-disconnect" onclick="toggleLockDisconnect(this)"></button></div>
+    <div class="row"><div class="grow"><div class="t">Подключать при разблокировке</div><div class="s">АВТОМАТИЧЕСКИ ПЕРЕПОДКЛЮЧАТЬСЯ ПОСЛЕ РАЗБЛОКИРОВКИ</div></div><button class="toggle" id="tgl-lock-reconnect" onclick="toggleLockReconnect(this)"></button></div>
+    <div class="row" onclick="requestBatteryIgnore()"><div class="grow"><div class="t">Отключить оптимизацию батареи</div><div class="s" id="batt-sub">НУЖНО, ЧТОБЫ БЛОКИРОВКА ЭКРАНА РАБОТАЛА В ФОНЕ</div></div><span class="chev">›</span></div>
+    <div class="row"><div class="grow"><div class="t">Экономичный режим<i class="info-i" onclick="event.stopPropagation();showInfo('Экономичный режим','Приложение реже опрашивает ядро о трафике и списке серверов, пока экран открыт — это снижает нагрузку на процессор и число фоновых будильников. Скорость и стабильность самого VPN-соединения не меняются, экономия только на служебных проверках интерфейса.')">ⓘ</i></div><div class="s">РЕЖЕ ОБНОВЛЯЕТ ИНТЕРФЕЙС — МЕНЬШЕ РАСХОД БАТАРЕИ</div></div><button class="toggle" id="tgl-battery-saver" onclick="toggleBatterySaver(this)"></button></div>
+    <div class="row" onclick="go('trigger')"><div class="grow"><div class="t">Автовключение по приложению<i class="info-i" onclick="event.stopPropagation();showInfo('Автовключение по приложению','Выберите приложение — VPN включится сам, когда вы его откроете, и выключится, когда вы из него выйдете (если вы не включали VPN вручную сами до этого). Работает через отдельное фоновое наблюдение за экраном, поэтому в шторке появится второе уведомление — так требует Android для любого фонового процесса, убрать его нельзя.')">ⓘ</i></div><div class="s" id="trigger-sub">ВЫКЛЮЧЕНО</div></div><span class="chev">›</span></div>
+    <div class="list-note" style="padding:10px 4px 0">Плитка в шторке и виджет на рабочем столе включают VPN одним тапом — добавь их через системное меню.</div>
+    <div class="row"><div class="grow"><div class="t">Тема</div><div class="s">ТЁМНАЯ / СВЕТЛАЯ</div></div><span class="chev" onclick="toggleTheme()">◐</span></div>
     <div class="row" style="display:block">
-      <div class="grow" style="margin-bottom:12px"><div class="t">РћС„РѕСЂРјР»РµРЅРёРµ</div><div class="s">Р¦Р’Р•Рў РђРљР¦Р•РќРўРђ</div></div>
+      <div class="grow" style="margin-bottom:12px"><div class="t">Оформление</div><div class="s">ЦВЕТ АКЦЕНТА</div></div>
       <div class="accent-row" id="accent-row"></div>
     </div>
-    <div class="row" onclick="showAbout()"><div class="grow"><div class="t">Рћ РїСЂРёР»РѕР¶РµРЅРёРё</div><div class="s">Р’Р•Р РЎРРЇ В· Р›РР¦Р•РќР—РРЇ В· РђР’РўРћР Р«</div></div><span class="chev">вЂє</span></div>
-    <div class="list-note" id="about-note">Misetanibox В· СЏРґСЂРѕ mihomo (MetaCubeX). Android-РІРµСЂСЃРёСЏ вЂ” РІРєР»Р°Рґ @14Unight (РїР»РёС‚РєР°, РІРёРґР¶РµС‚, Р°РІС‚РѕР·Р°РїСѓСЃРє).</div>
+    <div class="row" onclick="showAbout()"><div class="grow"><div class="t">О приложении</div><div class="s">ВЕРСИЯ · ЛИЦЕНЗИЯ · АВТОРЫ</div></div><span class="chev">›</span></div>
+    <div class="list-note" id="about-note">Misetanibox · ядро mihomo (MetaCubeX). Android-версия — вклад @14Unight (плитка, виджет, автозапуск).</div>
   </div>
 
-  <!-- Р РђР—Р”Р•Р›Р¬РќР«Р™ РўРЈРќРќР•Р›Р¬ РџРћ РџР РР›РћР–Р•РќРРЇРњ -->
+  <!-- РАЗДЕЛЬНЫЙ ТУННЕЛЬ ПО ПРИЛОЖЕНИЯМ -->
   <div class="view hidden" id="view-apps">
-    <div class="back-row" onclick="go('settings')"><span class="bk">вЂ№</span><div class="sec-title" style="margin:0">Р Р°Р·РґРµР»СЊРЅС‹Р№ С‚СѓРЅРЅРµР»СЊ</div></div>
-    <div class="sec-sub">РљРђРљРР• РџР РР›РћР–Р•РќРРЇ РР”РЈРў Р§Р•Р Р•Р— VPN</div>
+    <div class="back-row" onclick="go('settings')"><span class="bk">‹</span><div class="sec-title" style="margin:0">Раздельный туннель</div></div>
+    <div class="sec-sub">КАКИЕ ПРИЛОЖЕНИЯ ИДУТ ЧЕРЕЗ VPN</div>
     <div class="sub-seg" style="margin-top:14px">
-      <button class="sub-seg-btn" id="split-off" onclick="setSplitMode('off')">Р’СЃРµ С‡РµСЂРµР· VPN</button>
-      <button class="sub-seg-btn" id="split-bypass" onclick="setSplitMode('bypass')">РњРёРјРѕ VPN</button>
-      <button class="sub-seg-btn" id="split-only" onclick="setSplitMode('only')">РўРѕР»СЊРєРѕ VPN</button>
+      <button class="sub-seg-btn" id="split-off" onclick="setSplitMode('off')">Все через VPN</button>
+      <button class="sub-seg-btn" id="split-bypass" onclick="setSplitMode('bypass')">Мимо VPN</button>
+      <button class="sub-seg-btn" id="split-only" onclick="setSplitMode('only')">Только VPN</button>
     </div>
-    <div class="list-note" id="split-hint" style="padding:12px 4px">Р’РµСЃСЊ С‚СЂР°С„РёРє РёРґС‘С‚ С‡РµСЂРµР· VPN.</div>
-    <input id="apps-search" class="apps-search" type="text" placeholder="РџРѕРёСЃРє РїСЂРёР»РѕР¶РµРЅРёСЏвЂ¦" autocapitalize="off" autocorrect="off" spellcheck="false" oninput="renderAppList()">
-    <div class="app-list" id="app-list"><div class="list-note">Р—Р°РіСЂСѓР·РєР° СЃРїРёСЃРєР° РїСЂРёР»РѕР¶РµРЅРёР№вЂ¦</div></div>
+    <div class="list-note" id="split-hint" style="padding:12px 4px">Весь трафик идёт через VPN.</div>
+    <input id="apps-search" class="apps-search" type="text" placeholder="Поиск приложения…" autocapitalize="off" autocorrect="off" spellcheck="false" oninput="renderAppList()">
+    <div class="app-list" id="app-list"><div class="list-note">Загрузка списка приложений…</div></div>
   </div>
 
-  <!-- РђР’РўРћР’РљР›Р®Р§Р•РќРР• РџРћ РџР РР›РћР–Р•РќРР® -->
+  <!-- АВТОВКЛЮЧЕНИЕ ПО ПРИЛОЖЕНИЮ -->
   <div class="view hidden" id="view-trigger">
-    <div class="back-row" onclick="go('settings')"><span class="bk">вЂ№</span><div class="sec-title" style="margin:0">РђРІС‚РѕРІРєР»СЋС‡РµРЅРёРµ РїРѕ РїСЂРёР»РѕР¶РµРЅРёСЋ</div></div>
-    <div class="sec-sub">VPN Р’РљР›Р®Р§РРўРЎРЇ РџР Р РћРўРљР Р«РўРР, Р’Р«РљР›Р®Р§РРўРЎРЇ РџР Р Р’Р«РҐРћР”Р•</div>
-    <div class="row"><div class="grow"><div class="t">Р’РєР»СЋС‡РёС‚СЊ С„СѓРЅРєС†РёСЋ</div><div class="s" id="trigger-enabled-sub">РЎРќРђР§РђР›Рђ Р’Р«Р‘Р•Р РРўР• РџР РР›РћР–Р•РќРРЇ РќРР–Р•</div></div><button class="toggle" id="tgl-trigger-enabled" onclick="toggleTriggerEnabled(this)"></button></div>
-    <div class="row" onclick="requestUsageAccess()"><div class="grow"><div class="t">Р”РѕСЃС‚СѓРї Рє СЃС‚Р°С‚РёСЃС‚РёРєРµ РёСЃРїРѕР»СЊР·РѕРІР°РЅРёСЏ</div><div class="s" id="usage-access-sub">РџР РћР’Р•Р РљРђвЂ¦</div></div><span class="chev">вЂє</span></div>
-    <div class="list-note">РџСЂРёР»РѕР¶РµРЅРёРµ-С‚СЂРёРіРіРµСЂ СЃРµР№С‡Р°СЃ: <span id="trigger-current">РЅРµ РІС‹Р±СЂР°РЅРѕ</span></div>
-    <input id="trigger-search" class="apps-search" type="text" placeholder="РџРѕРёСЃРє РїСЂРёР»РѕР¶РµРЅРёСЏвЂ¦" autocapitalize="off" autocorrect="off" spellcheck="false" oninput="renderTriggerAppList()">
-    <div id="trigger-app-list"><div class="list-note">Р—Р°РіСЂСѓР·РєР° СЃРїРёСЃРєР° РїСЂРёР»РѕР¶РµРЅРёР№вЂ¦</div></div>
+    <div class="back-row" onclick="go('settings')"><span class="bk">‹</span><div class="sec-title" style="margin:0">Автовключение по приложению</div></div>
+    <div class="sec-sub">VPN ВКЛЮЧИТСЯ ПРИ ОТКРЫТИИ, ВЫКЛЮЧИТСЯ ПРИ ВЫХОДЕ</div>
+    <div class="row"><div class="grow"><div class="t">Включить функцию</div><div class="s" id="trigger-enabled-sub">СНАЧАЛА ВЫБЕРИТЕ ПРИЛОЖЕНИЯ НИЖЕ</div></div><button class="toggle" id="tgl-trigger-enabled" onclick="toggleTriggerEnabled(this)"></button></div>
+    <div class="row" onclick="requestUsageAccess()"><div class="grow"><div class="t">Доступ к статистике использования</div><div class="s" id="usage-access-sub">ПРОВЕРКА…</div></div><span class="chev">›</span></div>
+    <div class="list-note">Приложение-триггер сейчас: <span id="trigger-current">не выбрано</span></div>
+    <input id="trigger-search" class="apps-search" type="text" placeholder="Поиск приложения…" autocapitalize="off" autocorrect="off" spellcheck="false" oninput="renderTriggerAppList()">
+    <div id="trigger-app-list"><div class="list-note">Загрузка списка приложений…</div></div>
   </div>
 
   <div class="sub-modal hidden" id="info-modal" onclick="if(event.target===this)closeInfoModal()">
@@ -253,23 +253,23 @@ body{background:var(--bg);color:var(--fg);font-family:'Inter Tight',sans-serif;o
       <div class="sub-modal-title" id="info-title"></div>
       <div class="list-note" id="info-text" style="padding:12px 0 0"></div>
       <div class="sub-modal-btns">
-        <button class="sub-btn primary" onclick="closeInfoModal()">РџРѕРЅСЏС‚РЅРѕ</button>
+        <button class="sub-btn primary" onclick="closeInfoModal()">Понятно</button>
       </div>
     </div>
   </div>
 
   <div class="sub-modal hidden" id="sub-modal" onclick="if(event.target===this)closeSubModal()">
     <div class="sub-modal-card">
-      <div class="sub-modal-title">РџРѕРґРїРёСЃРєР°</div>
+      <div class="sub-modal-title">Подписка</div>
       <div class="sub-seg">
-        <button class="sub-seg-btn active" id="seg-url" onclick="setSubMode('url')">РџРѕ СЃСЃС‹Р»РєРµ</button>
-        <button class="sub-seg-btn" id="seg-dns" onclick="setSubMode('dns')">Р§РµСЂРµР· DNS</button>
+        <button class="sub-seg-btn active" id="seg-url" onclick="setSubMode('url')">По ссылке</button>
+        <button class="sub-seg-btn" id="seg-dns" onclick="setSubMode('dns')">Через DNS</button>
       </div>
-      <div class="sub-modal-hint" id="sub-hint">РЎСЃС‹Р»РєР° РЅР° РєРѕРЅС„РёРі: mihomo YAML, Xray JSON РёР»Рё СЃРїРёСЃРѕРє СЃСЃС‹Р»РѕРє</div>
+      <div class="sub-modal-hint" id="sub-hint">Ссылка на конфиг: mihomo YAML, Xray JSON или список ссылок</div>
       <input id="sub-input" class="sub-input" type="text" inputmode="url" autocapitalize="off" autocorrect="off" spellcheck="false" placeholder="https://...">
       <div class="sub-modal-btns">
-        <button class="sub-btn ghost" onclick="closeSubModal()">РћС‚РјРµРЅР°</button>
-        <button class="sub-btn primary" onclick="saveSubModal()">РЎРѕС…СЂР°РЅРёС‚СЊ</button>
+        <button class="sub-btn ghost" onclick="closeSubModal()">Отмена</button>
+        <button class="sub-btn primary" onclick="saveSubModal()">Сохранить</button>
       </div>
     </div>
   </div>
@@ -278,66 +278,66 @@ body{background:var(--bg);color:var(--fg);font-family:'Inter Tight',sans-serif;o
   <div class="sub-modal hidden" id="ua-modal" onclick="if(event.target===this)closeUaModal()">
     <div class="sub-modal-card">
       <div class="sub-modal-title">User-Agent</div>
-      <div class="sub-modal-hint">РљР°РєРёРј РєР»РёРµРЅС‚РѕРј РїСЂРµРґСЃС‚Р°РІР»СЏС‚СЊСЃСЏ РїР°РЅРµР»Рё</div>
+      <div class="sub-modal-hint">Каким клиентом представляться панели</div>
       <div id="ua-presets" class="chain-nodes"></div>
-      <div class="sub-modal-hint">РР»Рё СЃРІРѕР№</div>
+      <div class="sub-modal-hint">Или свой</div>
       <input id="ua-input" class="sub-input" type="text" autocapitalize="off" autocorrect="off" spellcheck="false" placeholder="clash-meta/mihomo">
       <div class="sub-modal-btns">
-        <button class="sub-btn ghost" onclick="closeUaModal()">РћС‚РјРµРЅР°</button>
-        <button class="sub-btn primary" onclick="saveUaModal()">РЎРѕС…СЂР°РЅРёС‚СЊ</button>
+        <button class="sub-btn ghost" onclick="closeUaModal()">Отмена</button>
+        <button class="sub-btn primary" onclick="saveUaModal()">Сохранить</button>
       </div>
     </div>
   </div>
 
   <div class="sub-modal hidden" id="rule-modal" onclick="if(event.target===this)closeRuleModal()">
     <div class="sub-modal-card">
-      <div class="sub-modal-title">РЎРІРѕС‘ РїСЂР°РІРёР»Рѕ</div>
-      <div class="sub-modal-hint">Р§С‚Рѕ РїРµСЂРµС…РІР°С‚С‹РІР°РµРј</div>
+      <div class="sub-modal-title">Своё правило</div>
+      <div class="sub-modal-hint">Что перехватываем</div>
       <div class="sub-seg" style="flex-wrap:wrap">
-        <button class="sub-seg-btn active" data-rt="DOMAIN-SUFFIX" onclick="setRuleType(this)">Р”РѕРјРµРЅ</button>
-        <button class="sub-seg-btn" data-rt="DOMAIN-KEYWORD" onclick="setRuleType(this)">РЎР»РѕРІРѕ</button>
+        <button class="sub-seg-btn active" data-rt="DOMAIN-SUFFIX" onclick="setRuleType(this)">Домен</button>
+        <button class="sub-seg-btn" data-rt="DOMAIN-KEYWORD" onclick="setRuleType(this)">Слово</button>
         <button class="sub-seg-btn" data-rt="IP-CIDR" onclick="setRuleType(this)">IP</button>
-        <button class="sub-seg-btn" data-rt="PROCESS-NAME" onclick="setRuleType(this)">РџСЂРёР»РѕР¶РµРЅРёРµ</button>
+        <button class="sub-seg-btn" data-rt="PROCESS-NAME" onclick="setRuleType(this)">Приложение</button>
       </div>
-      <input id="rule-value" class="sub-input" type="text" autocapitalize="off" autocorrect="off" spellcheck="false" placeholder="РЅР°РїСЂРёРјРµСЂ: example.com">
-      <div class="sub-modal-hint">РљСѓРґР° РЅР°РїСЂР°РІРёС‚СЊ</div>
+      <input id="rule-value" class="sub-input" type="text" autocapitalize="off" autocorrect="off" spellcheck="false" placeholder="например: example.com">
+      <div class="sub-modal-hint">Куда направить</div>
       <div class="sub-seg">
-        <button class="sub-seg-btn active" data-rtg="PROXY" onclick="setRuleTarget(this)">Р§РµСЂРµР· VPN</button>
-        <button class="sub-seg-btn" data-rtg="DIRECT" onclick="setRuleTarget(this)">РњРёРјРѕ VPN</button>
-        <button class="sub-seg-btn" data-rtg="REJECT" onclick="setRuleTarget(this)">Р‘Р»РѕРєРёСЂРѕРІР°С‚СЊ</button>
+        <button class="sub-seg-btn active" data-rtg="PROXY" onclick="setRuleTarget(this)">Через VPN</button>
+        <button class="sub-seg-btn" data-rtg="DIRECT" onclick="setRuleTarget(this)">Мимо VPN</button>
+        <button class="sub-seg-btn" data-rtg="REJECT" onclick="setRuleTarget(this)">Блокировать</button>
       </div>
       <div class="sub-modal-btns">
-        <button class="sub-btn ghost" onclick="closeRuleModal()">РћС‚РјРµРЅР°</button>
-        <button class="sub-btn primary" onclick="saveRule()">Р”РѕР±Р°РІРёС‚СЊ</button>
+        <button class="sub-btn ghost" onclick="closeRuleModal()">Отмена</button>
+        <button class="sub-btn primary" onclick="saveRule()">Добавить</button>
       </div>
     </div>
   </div>
 
   <div class="sub-modal hidden" id="chain-modal" onclick="if(event.target===this)closeChainModal()">
     <div class="sub-modal-card">
-      <div class="sub-modal-title">Р¦РµРїРѕС‡РєР°</div>
-      <input id="chain-name" class="sub-input" type="text" maxlength="24" placeholder="РќР°Р·РІР°РЅРёРµ (РЅР°РїСЂ. NL в†’ DE)">
-      <div class="sub-modal-hint">Р’С…РѕРґРЅРѕР№ СЃРµСЂРІРµСЂ вЂ” С‡РµСЂРµР· РЅРµРіРѕ РїРѕР№РґС‘С‚ С†РµРїРѕС‡РєР°</div>
-      <input id="chain-search" class="apps-search" type="text" placeholder="РџРѕРёСЃРє СЃРµСЂРІРµСЂР°вЂ¦" autocapitalize="off" oninput="renderChainNodes()">
+      <div class="sub-modal-title">Цепочка</div>
+      <input id="chain-name" class="sub-input" type="text" maxlength="24" placeholder="Название (напр. NL → DE)">
+      <div class="sub-modal-hint">Входной сервер — через него пойдёт цепочка</div>
+      <input id="chain-search" class="apps-search" type="text" placeholder="Поиск сервера…" autocapitalize="off" oninput="renderChainNodes()">
       <div id="chain-nodes" class="chain-nodes"></div>
       <div class="sub-modal-btns">
-        <button class="sub-btn ghost" onclick="closeChainModal()">РћС‚РјРµРЅР°</button>
-        <button class="sub-btn primary" onclick="saveChain()">РЎРѕР·РґР°С‚СЊ</button>
+        <button class="sub-btn ghost" onclick="closeChainModal()">Отмена</button>
+        <button class="sub-btn primary" onclick="saveChain()">Создать</button>
       </div>
     </div>
   </div>
 
   <nav class="nav">
-    <button class="active" data-tab="home" onclick="go('home')"><span class="g">в—‡</span>Р“Р›РђР’РќРђРЇ</button>
-    <button data-tab="servers" onclick="go('servers')"><span class="g">в‰Ў</span>РЎР•Р Р’Р•Р Р«</button>
-    <button data-tab="rules" onclick="go('rules')"><span class="g">В§</span>РџР РђР’РР›Рђ</button>
-    <button data-tab="subs" onclick="go('subs')"><span class="g">вЉћ</span>РџРћР”РџРРЎРљР</button>
-    <button data-tab="settings" onclick="go('settings')"><span class="g">вљ™</span>РќРђРЎРўР РћР™РљР</button>
+    <button class="active" data-tab="home" onclick="go('home')"><span class="g">◇</span>ГЛАВНАЯ</button>
+    <button data-tab="servers" onclick="go('servers')"><span class="g">≡</span>СЕРВЕРЫ</button>
+    <button data-tab="rules" onclick="go('rules')"><span class="g">§</span>ПРАВИЛА</button>
+    <button data-tab="subs" onclick="go('subs')"><span class="g">⊞</span>ПОДПИСКИ</button>
+    <button data-tab="settings" onclick="go('settings')"><span class="g">⚙</span>НАСТРОЙКИ</button>
   </nav>
 </div>
 
 <script>
-// ---------- С‚РѕСЃС‚ (alert/prompt РІ WebView РЅРµРЅР°РґС‘Р¶РЅС‹) ----------
+// ---------- тост (alert/prompt в WebView ненадёжны) ----------
 function toast(msg){
   let t=document.getElementById('mise-toast');
   if(!t){ t=document.createElement('div'); t.id='mise-toast'; document.body.appendChild(t);
@@ -347,12 +347,12 @@ function toast(msg){
   clearTimeout(t._h); t._h=setTimeout(()=>{ t.style.opacity='0'; }, 3200);
 }
 
-// ---------- РѕРїСЂРµРґРµР»РµРЅРёРµ СЃС‚СЂР°РЅС‹ РїРѕ РёРјРµРЅРё РЅРѕРґС‹ ----------
-const FLAG_NAMES={us:['united states','usa','СЃС€Р°','Р°РјРµСЂРёРє'],gb:['united kingdom','britain','england','uk','Р±СЂРёС‚Р°РЅ','Р°РЅРіР»Рё','Р»РѕРЅРґРѕРЅ'],de:['germany','РіРµСЂРјР°РЅ','С„СЂР°РЅРєС„СѓСЂС‚','frankfurt'],nl:['netherlands','РЅРёРґРµСЂР»Р°РЅРґ','Р°РјСЃС‚РµСЂРґР°Рј','amsterdam'],fr:['france','С„СЂР°РЅС†','РїР°СЂРёР¶'],ru:['russia','СЂРѕСЃСЃРё','РјРѕСЃРєРІ','moscow'],ua:['ukraine','СѓРєСЂР°РёРЅ'],se:['sweden','С€РІРµС†Рё'],fi:['finland','С„РёРЅР»СЏРЅРґ','helsinki'],no:['norway','РЅРѕСЂРІРµРі'],dk:['denmark','РґР°РЅРё'],pl:['poland','РїРѕР»СЊС€'],ch:['switzerland','С€РІРµР№С†Р°СЂ'],at:['austria','Р°РІСЃС‚СЂРё'],es:['spain','РёСЃРїР°РЅРё'],it:['italy','РёС‚Р°Р»Рё'],pt:['portugal','РїРѕСЂС‚СѓРіР°Р»'],tr:['turkey','С‚СѓСЂС†Рё','istanbul'],jp:['japan','СЏРїРѕРЅРё','tokyo'],hk:['hong kong','РіРѕРЅРєРѕРЅРі'],sg:['singapore','СЃРёРЅРіР°РїСѓСЂ'],kr:['korea','РєРѕСЂРµСЏ'],tw:['taiwan','С‚Р°Р№РІР°РЅ'],cn:['china','РєРёС‚Р°Р№'],in:['india','РёРЅРґРё'],au:['australia','Р°РІСЃС‚СЂР°Р»'],ca:['canada','РєР°РЅР°Рґ'],br:['brazil','Р±СЂР°Р·РёР»'],ae:['emirates','dubai','РѕР°СЌ','СЌРјРёСЂР°С‚','РґСѓР±Р°Р№'],il:['israel','РёР·СЂР°РёР»'],cz:['czech','С‡РµС…Рё','prague'],ro:['romania','СЂСѓРјС‹РЅ'],lv:['latvia','Р»Р°С‚РІРё','riga'],lt:['lithuania','Р»РёС‚РІ'],ee:['estonia','СЌСЃС‚РѕРЅРё'],kz:['kazakhstan','РєР°Р·Р°С…СЃС‚Р°РЅ'],ge:['georgia','РіСЂСѓР·Рё'],am:['armenia','Р°СЂРјРµРЅРё'],az:['azerbaijan','Р°Р·РµСЂР±Р°Р№РґР¶'],by:['belarus','Р±РµР»Р°СЂСѓСЃ']};
-const FLAG_CODES=new Set(['ae','al','am','ar','at','au','az','bd','be','bg','bh','br','by','ca','ch','cl','cn','cy','cz','de','dk','ee','eg','es','fi','fr','gb','ge','gr','hk','hr','hu','id','ie','il','in','iq','ir','is','it','jp','kg','kr','kw','kz','lk','lt','lu','lv','md','me','mk','mn','mt','mx','my','na','nl','no','np','ph','pk','pl','pt','qa','ro','rs','ru','sa','se','sg','si','sk','th','tj','tr','tw','ua','us','uz','vn','xk','za']); // РІСЃРµ С„Р»Р°РіРё РёР· www/flags (СЌРјРѕРґР·Рё-РґРµС‚РµРєС‚ СЂР°Р±РѕС‚Р°РµС‚ РґР»СЏ РІСЃРµС…, С‡С‚Рѕ РµСЃС‚СЊ РІ Р±Р°РЅРґР»Рµ)
+// ---------- определение страны по имени ноды ----------
+const FLAG_NAMES={us:['united states','usa','сша','америк'],gb:['united kingdom','britain','england','uk','британ','англи','лондон'],de:['germany','герман','франкфурт','frankfurt'],nl:['netherlands','нидерланд','амстердам','amsterdam'],fr:['france','франц','париж'],ru:['russia','росси','москв','moscow'],ua:['ukraine','украин'],se:['sweden','швеци'],fi:['finland','финлянд','helsinki'],no:['norway','норвег'],dk:['denmark','дани'],pl:['poland','польш'],ch:['switzerland','швейцар'],at:['austria','австри'],es:['spain','испани'],it:['italy','итали'],pt:['portugal','португал'],tr:['turkey','турци','istanbul'],jp:['japan','япони','tokyo'],hk:['hong kong','гонконг'],sg:['singapore','сингапур'],kr:['korea','корея'],tw:['taiwan','тайван'],cn:['china','китай'],in:['india','инди'],au:['australia','австрал'],ca:['canada','канад'],br:['brazil','бразил'],ae:['emirates','dubai','оаэ','эмират','дубай'],il:['israel','израил'],cz:['czech','чехи','prague'],ro:['romania','румын'],lv:['latvia','латви','riga'],lt:['lithuania','литв'],ee:['estonia','эстони'],kz:['kazakhstan','казахстан'],ge:['georgia','грузи'],am:['armenia','армени'],az:['azerbaijan','азербайдж'],by:['belarus','беларус']};
+const FLAG_CODES=new Set(['ae','al','am','ar','at','au','az','bd','be','bg','bh','br','by','ca','ch','cl','cn','cy','cz','de','dk','ee','eg','es','fi','fr','gb','ge','gr','hk','hr','hu','id','ie','il','in','iq','ir','is','it','jp','kg','kr','kw','kz','lk','lt','lu','lv','md','me','mk','mn','mt','mx','my','na','nl','no','np','ph','pk','pl','pt','qa','ro','rs','ru','sa','se','sg','si','sk','th','tj','tr','tw','ua','us','uz','vn','xk','za']); // все флаги из www/flags (эмодзи-детект работает для всех, что есть в бандле)
 function countryCode(name){
   if(!name) return null;
-  // СЌРјРѕРґР·Рё-С„Р»Р°Рі
+  // эмодзи-флаг
   const arr=Array.from(name);
   for(let i=0;i<arr.length-1;i++){
     const a=arr[i].codePointAt(0),b=arr[i+1].codePointAt(0);
@@ -375,31 +375,31 @@ function flagEmoji(name){
   }
   return '';
 }
-// РЎР»СѓР¶РµР±РЅС‹Рµ РїРѕР»РёС‚РёРєРё mihomo вЂ” Сѓ РЅРёС… РЅРµС‚ СЃС‚СЂР°РЅС‹, РЅРѕ РїСѓСЃС‚РѕР№ СЃРµСЂС‹Р№ РїСЂСЏРјРѕСѓРіРѕР»СЊРЅРёРє
-// РІС‹РіР»СЏРґРёС‚ РєР°Рє В«СЃР»РѕРјР°Р»РѕСЃСЊВ». Р”Р°С‘Рј РёРј РїРѕРЅСЏС‚РЅС‹Р№ РіР»РёС„.
-const POLICY_ICON={'DIRECT':'в‡ў','REJECT':'вњ•','REJECT-DROP':'вњ•','PASS':'в‡Ґ','COMPATIBLE':'в€…','GLOBAL':'вЉ•'};
+// Служебные политики mihomo — у них нет страны, но пустой серый прямоугольник
+// выглядит как «сломалось». Даём им понятный глиф.
+const POLICY_ICON={'DIRECT':'⇢','REJECT':'✕','REJECT-DROP':'✕','PASS':'⇥','COMPATIBLE':'∅','GLOBAL':'⊕'};
 function flagImg(name,cls){
   const c=countryCode(name);
   if(c) return `<img class="${cls}" src="flags/${c}.svg" alt="">`;
-  // РЅРµС‚ SVG вЂ” РїРѕРєР°Р·С‹РІР°РµРј СЌРјРѕРґР·Рё-С„Р»Р°Рі РёР· РёРјРµРЅРё (Р‘РѕСЃРЅРёСЏ, РљР°РјР±РѕРґР¶Р° Рё С‚.Рї.)
+  // нет SVG — показываем эмодзи-флаг из имени (Босния, Камбоджа и т.п.)
   const e=flagEmoji(name);
   if(e) return `<span class="${cls} ico-badge" style="font-size:15px">${e}</span>`;
   const pol=POLICY_ICON[String(name||'').trim().toUpperCase()];
   if(pol) return `<span class="${cls} ico-badge">${pol}</span>`;
-  // РіСЂСѓРїРїС‹ Р±РµР· СЃС‚СЂР°РЅС‹ (AI, РўРѕСЂСЂРµРЅС‚, Р—Р°СЂСѓР±РµР¶РЅС‹Рµ СЃР°Р№С‚С‹) вЂ” Р±СѓРєРІР° РІРјРµСЃС‚Рѕ РїСѓСЃС‚РѕРіРѕ Р±Р»РѕРєР°
-  const letter=(cleanName(name||'').trim()[0]||'В·').toUpperCase();
+  // группы без страны (AI, Торрент, Зарубежные сайты) — буква вместо пустого блока
+  const letter=(cleanName(name||'').trim()[0]||'·').toUpperCase();
   return `<span class="${cls} ico-badge">${esc(letter)}</span>`;
 }
-// Р­РєСЂР°РЅРёСЂРѕРІР°РЅРёРµ РїРµСЂРµРґ РІСЃС‚Р°РІРєРѕР№ РІ DOM. РРјРµРЅР° СѓР·Р»РѕРІ РїСЂРёС…РѕРґСЏС‚ РёР· РїРѕРґРїРёСЃРєРё вЂ” С‚Рѕ РµСЃС‚СЊ
-// СЃРЅР°СЂСѓР¶Рё; Р±РµР· СЌРєСЂР°РЅРёСЂРѕРІР°РЅРёСЏ СЂР°Р·РјРµС‚РєР° РёР· РёРјРµРЅРё РІС‹РїРѕР»РЅРёР»Р°СЃСЊ Р±С‹ РІ WebView, РіРґРµ РґРѕСЃС‚СѓРїРµРЅ
-// РјРѕСЃС‚ Рє РЅР°С‚РёРІРЅРѕРјСѓ VPN-РїР»Р°РіРёРЅСѓ.
+// Экранирование перед вставкой в DOM. Имена узлов приходят из подписки — то есть
+// снаружи; без экранирования разметка из имени выполнилась бы в WebView, где доступен
+// мост к нативному VPN-плагину.
 function esc(v){
   return String(v==null?'':v)
     .replace(/&/g,'&amp;').replace(/>/g,'&gt;')
     .replace(/"/g,'&quot;').replace(/'/g,'&#39;');
 }
 function cleanName(name){
-  return Array.from(name||'').filter(ch=>{const cp=ch.codePointAt(0);return !(cp>=0x1f1e6&&cp<=0x1f1ff);}).join('').replace(/^[\s|В·гѓ»вЂў\-вЂ“вЂ”_]+/,'').trim()||name;
+  return Array.from(name||'').filter(ch=>{const cp=ch.codePointAt(0);return !(cp>=0x1f1e6&&cp<=0x1f1ff);}).join('').replace(/^[\s|·・•\-–—_]+/,'').trim()||name;
 }
 function pingColor(p){return (p>0&&p<80)?'var(--ok)':(p<180)?'var(--mid)':'var(--bad)'}
 
@@ -423,7 +423,7 @@ function showInfo(title, text){
 }
 function closeInfoModal(){ document.getElementById('info-modal').classList.add('hidden'); }
 
-// ---------- Capacitor: РЅР°С‚РёРІРЅС‹Р№ VPN-РїР»Р°РіРёРЅ ----------
+// ---------- Capacitor: нативный VPN-плагин ----------
 const BUILD = 'v0.19.0';
 const Cap = window.Capacitor;
 const platform = (Cap && Cap.getPlatform) ? Cap.getPlatform() : 'web';
@@ -431,19 +431,19 @@ const isNative = !!(Cap && Cap.isNativePlatform ? Cap.isNativePlatform() : (plat
 const Vpn = (Cap && Cap.registerPlugin) ? Cap.registerPlugin('Vpn')
           : (Cap && Cap.Plugins ? Cap.Plugins.Vpn : null);
 
-// ---------- РґРёР°РіРЅРѕСЃС‚РёРєР° (РІРёРґРёРјР°СЏ РІ РїСЂРёР»РѕР¶РµРЅРёРё) ----------
+// ---------- диагностика (видимая в приложении) ----------
 let dbgLines=[];
 function dbg(msg){
   const t=new Date().toISOString().substr(11,8);
   dbgLines.push(t+' '+msg); if(dbgLines.length>60) dbgLines.shift();
   const el=document.getElementById('dbg'); if(el){ el.classList.add('on'); el.textContent=dbgLines.join('\n'); el.scrollTop=el.scrollHeight; }
 }
-function copyDbg(){ try{ navigator.clipboard.writeText(dbgLines.join('\n')); toast('Р›РѕРі СЃРєРѕРїРёСЂРѕРІР°РЅ'); }catch(e){} }
+function copyDbg(){ try{ navigator.clipboard.writeText(dbgLines.join('\n')); toast('Лог скопирован'); }catch(e){} }
 window.addEventListener('error',e=>dbg('JS ERR: '+(e.message||e)));
 const API_BASE = 'http://127.0.0.1:9090';
 const GROUP = 'PROXY';
 function safeJson(s){ try{ return JSON.parse(s); }catch{ return null; } }
-// Р·Р°РїСЂРѕСЃ Рє API СЏРґСЂР°: С‡РµСЂРµР· РЅР°С‚РёРІРЅС‹Р№ РїР»Р°РіРёРЅ (Р±РµР· CORS/mixed-content), СЃ С„РѕР»Р±СЌРєРѕРј РЅР° fetch РІ РІРµР±Рµ
+// запрос к API ядра: через нативный плагин (без CORS/mixed-content), с фолбэком на fetch в вебе
 async function core(method, path, body){
   try{
     if(Vpn && Vpn.coreRequest){
@@ -461,65 +461,65 @@ function getHwid(){
   if(!h){ h = (crypto.randomUUID ? crypto.randomUUID() : String(Date.now())+Math.random()); localStorage.setItem('mise_hwid', h); }
   return h;
 }
-// ---------- РїРѕРґРїРёСЃРєРё (РЅРµСЃРєРѕР»СЊРєРѕ, РѕРґРЅР° Р°РєС‚РёРІРЅР°СЏ) ----------
-// mise_subs: [{id,name,url}], mise_subActive: id. mise_subUrl РґРµСЂР¶РёРј РІ СЃРёРЅС…СЂРѕРЅРµ вЂ”
-// РЅР° РЅРµРіРѕ Р·Р°РІСЏР·Р°РЅС‹ РЅР°С‚РёРІРЅС‹Рµ prefs (РїР»РёС‚РєР°/РІРёРґР¶РµС‚/Р°РІС‚РѕР·Р°РїСѓСЃРє).
+// ---------- подписки (несколько, одна активная) ----------
+// mise_subs: [{id,name,url}], mise_subActive: id. mise_subUrl держим в синхроне —
+// на него завязаны нативные prefs (плитка/виджет/автозапуск).
 function subs(){
   let list=[]; try{ list=JSON.parse(localStorage.getItem('mise_subs')||'[]'); }catch{ list=[]; }
   if(!Array.isArray(list)) list=[];
-  // РјРёРіСЂР°С†РёСЏ СЃРѕ СЃС‚Р°СЂРѕР№ РѕРґРёРЅРѕС‡РЅРѕР№ РїРѕРґРїРёСЃРєРё
+  // миграция со старой одиночной подписки
   const legacy=localStorage.getItem('mise_subUrl')||'';
   if(!list.length && legacy){ list=[{id:'s'+Date.now(), name:subName(legacy), url:legacy}]; saveSubs(list); setActiveSub(list[0].id); }
   return list;
 }
 function saveSubs(list){ localStorage.setItem('mise_subs', JSON.stringify(list)); }
-function subName(url){ try{ return new URL(url).hostname; }catch{ return (url||'').replace(/^https?:\/\//,'').split('/')[0] || 'РїРѕРґРїРёСЃРєР°'; } }
+function subName(url){ try{ return new URL(url).hostname; }catch{ return (url||'').replace(/^https?:\/\//,'').split('/')[0] || 'подписка'; } }
 function activeSubId(){ return localStorage.getItem('mise_subActive')||''; }
 function activeSub(){ const l=subs(); return l.find(s=>s.id===activeSubId()) || l[0] || null; }
 function setActiveSub(id){
   localStorage.setItem('mise_subActive', id);
   const s=subs().find(x=>x.id===id);
-  if(s) localStorage.setItem('mise_subUrl', s.url); // СЃРёРЅС…СЂРѕРЅ РґР»СЏ РЅР°С‚РёРІРЅРѕР№ С‡Р°СЃС‚Рё
-  // СЃРїРёСЃРѕРє СЃРµСЂРІРµСЂРѕРІ/С„РѕСЂРјР°С‚ РѕС‚РЅРѕСЃСЏС‚СЃСЏ Рє РїСЂРѕС€Р»РѕР№ РїРѕРґРїРёСЃРєРµ
+  if(s) localStorage.setItem('mise_subUrl', s.url); // синхрон для нативной части
+  // список серверов/формат относятся к прошлой подписке
   localStorage.removeItem('mise_lastServers'); localStorage.removeItem('mise_preferred'); localStorage.removeItem('mise_subFormat');
 }
 function getSubUrl(){ const s=activeSub(); return s ? s.url : (localStorage.getItem('mise_subUrl')||''); }
 function switchSub(id){
   if(id===activeSubId()) return;
   setActiveSub(id); renderSubs();
-  toast(connected ? 'РџРµСЂРµРїРѕРґРєР»СЋС‡РёС‚РµСЃСЊ, С‡С‚РѕР±С‹ РїСЂРёРјРµРЅРёС‚СЊ' : 'РђРєС‚РёРІРЅР°СЏ: '+(subs().find(s=>s.id===id)||{}).name);
+  toast(connected ? 'Переподключитесь, чтобы применить' : 'Активная: '+(subs().find(s=>s.id===id)||{}).name);
 }
 function delSub(id, ev){
   if(ev&&ev.stopPropagation) ev.stopPropagation();
   const list=subs().filter(s=>s.id!==id);
   saveSubs(list);
   if(activeSubId()===id){ if(list.length) setActiveSub(list[0].id); else { localStorage.removeItem('mise_subActive'); localStorage.removeItem('mise_subUrl'); } }
-  renderSubs(); toast('РџРѕРґРїРёСЃРєР° СѓРґР°Р»РµРЅР°');
+  renderSubs(); toast('Подписка удалена');
 }
 
-// ---------- User-Agent Р·Р°РїСЂРѕСЃР° РїРѕРґРїРёСЃРєРё ----------
-// РџР°РЅРµР»СЊ РІС‹Р±РёСЂР°РµС‚ С„РѕСЂРјР°С‚ РѕС‚РІРµС‚Р° РїРѕ UA: РЅР° clash-UA РїСЂРёС…РѕРґРёС‚ YAML, РЅР° v2rayNG/Xray вЂ”
-// JSON Xray РёР»Рё СЃРїРёСЃРѕРє СЃСЃС‹Р»РѕРє. РЇРґСЂРѕ РїРѕРЅРёРјР°РµС‚ РІСЃРµ С‚СЂРё (РєРѕРЅРІРµСЂС‚РµСЂ РІРЅСѓС‚СЂРё), РїРѕСЌС‚РѕРјСѓ UA
-// РјРѕР¶РЅРѕ РјРµРЅСЏС‚СЊ вЂ” СЌС‚Рѕ СЃРїРѕСЃРѕР± Р·Р°Р±СЂР°С‚СЊ РїРѕРґРїРёСЃРєСѓ Сѓ РїР°РЅРµР»Рё, РєРѕС‚РѕСЂР°СЏ РЅРµ Р·РЅР°РµС‚ РїСЂРѕ clash.
+// ---------- User-Agent запроса подписки ----------
+// Панель выбирает формат ответа по UA: на clash-UA приходит YAML, на v2rayNG/Xray —
+// JSON Xray или список ссылок. Ядро понимает все три (конвертер внутри), поэтому UA
+// можно менять — это способ забрать подписку у панели, которая не знает про clash.
 const UA_DEFAULT='clash-meta/mihomo';
 const UA_PRESETS=[
-  {ua:'clash-meta/mihomo', t:'mihomo / clash', s:'YAML вЂ” Р РћР”РќРћР™ Р¤РћР РњРђРў РЇР”Р Рђ'},
-  {ua:'v2rayNG/1.9.16',    t:'v2rayNG',        s:'РЎРџРРЎРћРљ РЎРЎР«Р›РћРљ РР›Р XRAY JSON'},
-  {ua:'Xray/25.9.11',      t:'Xray',           s:'JSON РљРћРќР¤РР“ XRAY'},
-  {ua:'sing-box/1.11.0',   t:'sing-box',       s:'Р•РЎР›Р РџРђРќР•Р›Р¬ Р—РќРђР•Рў РўРћР›Р¬РљРћ Р•Р“Рћ'},
+  {ua:'clash-meta/mihomo', t:'mihomo / clash', s:'YAML — РОДНОЙ ФОРМАТ ЯДРА'},
+  {ua:'v2rayNG/1.9.16',    t:'v2rayNG',        s:'СПИСОК ССЫЛОК ИЛИ XRAY JSON'},
+  {ua:'Xray/25.9.11',      t:'Xray',           s:'JSON КОНФИГ XRAY'},
+  {ua:'sing-box/1.11.0',   t:'sing-box',       s:'ЕСЛИ ПАНЕЛЬ ЗНАЕТ ТОЛЬКО ЕГО'},
 ];
 function getUserAgent(){ return localStorage.getItem('mise_ua') || UA_DEFAULT; }
 function setUserAgent(ua){
   const v=(ua||'').trim();
   localStorage.setItem('mise_ua', v || UA_DEFAULT);
-  // С„РѕСЂРјР°С‚ РїРѕРґРїРёСЃРєРё РјРѕРі СЃРјРµРЅРёС‚СЊСЃСЏ РІРјРµСЃС‚Рµ СЃ UA вЂ” РєСЌС€ СЃРµСЂРІРµСЂРѕРІ Р±РѕР»СЊС€Рµ РЅРµ РїСЂРѕ РЅРµС‘
+  // формат подписки мог смениться вместе с UA — кэш серверов больше не про неё
   localStorage.removeItem('mise_lastServers');
   applyUaSub();
 }
 function applyUaSub(){ const el=document.getElementById('ua-sub'); if(el) el.textContent=getUserAgent().toUpperCase(); }
 
-// ---------- РєР°РѕРјРѕРґР·Рё-РјРѕСЂРґРѕС‡РєР° РїРѕРґ Р±СЂРµРЅРґРѕРј ----------
-const FACE_HAPPY=['^o^','^q^','^_^','XD','>бґ—<','вЂўвЂївЂў','\\o/','^бґ—^'];
+// ---------- каомодзи-мордочка под брендом ----------
+const FACE_HAPPY=['^o^','^q^','^_^','XD','>ᴗ<','•‿•','\\o/','^ᴗ^'];
 const FACE_SLEEP=['-_-','._.','-.-','=_=','u_u','-_-zzz'];
 const rndFace=a=>a[Math.floor(Math.random()*a.length)];
 let faceBase='-_-';
@@ -537,25 +537,25 @@ function blinkFace(){
 setInterval(blinkFace,5200);
 
 let connected=false, sessStart=0, sessTimer=null;
-const delays={}; // РёРјСЏ РЅРѕРґС‹ -> РїРёРЅРі
+const delays={}; // имя ноды -> пинг
 function setUiConnected(on){
   connected=on;
   setFace(on);
   const big=document.getElementById('connect-big');
   const sv=document.getElementById('status-val');
   if(on){
-    big.innerHTML='РћРўРљР›Р®-<br>Р§РРўР¬РЎРЇ'; sv.textContent='в—Џ РџРћР”РљР›Р®Р§Р•РќРћ'; sv.style.color='var(--ok)';
+    big.innerHTML='ОТКЛЮ-<br>ЧИТЬСЯ'; sv.textContent='● ПОДКЛЮЧЕНО'; sv.style.color='var(--ok)';
     if(!sessTimer){ sessStart=Date.now(); sessTimer=setInterval(()=>{
       const s=Math.floor((Date.now()-sessStart)/1000);
       document.getElementById('sess-time').textContent=String(Math.floor(s/60)).padStart(2,'0')+':'+String(s%60).padStart(2,'0');
     },1000); }
     startTraffic();
-    document.getElementById('servers-sub').textContent='Р—РђР“Р РЈР—РљРђ';
-    setServersNote('РЇРґСЂРѕ СЃРєР°С‡РёРІР°РµС‚ РїРѕРґРїРёСЃРєСѓвЂ¦');
+    document.getElementById('servers-sub').textContent='ЗАГРУЗКА';
+    setServersNote('Ядро скачивает подписку…');
     waitForServers();
     setTimeout(applyModeToCore, 2500);
   }else{
-    big.innerHTML='РџРћР”РљР›Р®-<br>Р§РРўР¬РЎРЇ'; sv.textContent='в—‹ РћРўРљР›Р®Р§Р•РќРћ'; sv.style.color='';
+    big.innerHTML='ПОДКЛЮ-<br>ЧИТЬСЯ'; sv.textContent='○ ОТКЛЮЧЕНО'; sv.style.color='';
     clearInterval(sessTimer); sessTimer=null; document.getElementById('sess-time').textContent='00:00';
     stopTraffic();
     updateHomeServer('', null);
@@ -565,73 +565,73 @@ function setUiConnected(on){
 function setStatusText(t){ const sv=document.getElementById('status-val'); if(sv) sv.textContent=t; }
 
 async function toggleConnect(){
-  dbg('С‚Р°Рї connect | native='+isNative+' plugin='+(!!Vpn)+' hasStart='+(!!(Vpn&&Vpn.start)));
-  if(!isNative || !Vpn){ dbg('РќР• РЅР°С‚РёРІРЅРѕ в†’ РґРµРјРѕ-СЂРµР¶РёРј (РїР»Р°РіРёРЅ РЅРµРґРѕСЃС‚СѓРїРµРЅ!)'); setUiConnected(!connected); return; }
+  dbg('тап connect | native='+isNative+' plugin='+(!!Vpn)+' hasStart='+(!!(Vpn&&Vpn.start)));
+  if(!isNative || !Vpn){ dbg('НЕ нативно → демо-режим (плагин недоступен!)'); setUiConnected(!connected); return; }
   if(connected){
-    setStatusText('в—‹ РћРўРљР›Р®Р§Р•РќРР•вЂ¦'); dbg('Vpn.stop()');
+    setStatusText('○ ОТКЛЮЧЕНИЕ…'); dbg('Vpn.stop()');
     try{ await Vpn.stop(); }catch(e){ dbg('stop err: '+e); }
     return;
   }
   const sub=getSubUrl();
-  if(!sub){ toast('РЎРЅР°С‡Р°Р»Р° РґРѕР±Р°РІСЊС‚Рµ РїРѕРґРїРёСЃРєСѓ'); go('subs'); openSubModal(); return; }
-  setStatusText('в—Њ РџРћР”РљР›Р®Р§Р•РќРР•вЂ¦'); dbg('Vpn.start(sub='+sub.substr(0,28)+'вЂ¦)');
+  if(!sub){ toast('Сначала добавьте подписку'); go('subs'); openSubModal(); return; }
+  setStatusText('◌ ПОДКЛЮЧЕНИЕ…'); dbg('Vpn.start(sub='+sub.substr(0,28)+'…)');
   const sm=splitMode();
   const sApps=sm==='off'?[]:[...splitSelected];
   dbg('split='+sm+' apps='+sApps.length);
   const rulesList = buildRuleList();
   const chainList = chains();
-  dbg('РїСЂР°РІРёР»='+rulesList.length+' С†РµРїРѕС‡РµРє='+chainList.length);
-  try{ const r=await Vpn.start({ subUrl: sub, hwid: getHwid(), userAgent: getUserAgent(), splitMode: sm, splitApps: sApps, rules: rulesList, chains: chainList }); dbg('start() РІРµСЂРЅСѓР»: '+JSON.stringify(r||{})); }
-  catch(e){ setStatusText('в—‹ РћРўРљР›Р®Р§Р•РќРћ'); dbg('start() REJECT: '+(e&&e.message?e.message:e)); toast('РћС€РёР±РєР° СЃС‚Р°СЂС‚Р°: '+(e&&e.message?e.message:e)); }
+  dbg('правил='+rulesList.length+' цепочек='+chainList.length);
+  try{ const r=await Vpn.start({ subUrl: sub, hwid: getHwid(), userAgent: getUserAgent(), splitMode: sm, splitApps: sApps, rules: rulesList, chains: chainList }); dbg('start() вернул: '+JSON.stringify(r||{})); }
+  catch(e){ setStatusText('○ ОТКЛЮЧЕНО'); dbg('start() REJECT: '+(e&&e.message?e.message:e)); toast('Ошибка старта: '+(e&&e.message?e.message:e)); }
 }
 
 if(Vpn && Vpn.addListener){
   Vpn.addListener('vpnState', (s)=>{
-    dbg('СЃРѕР±С‹С‚РёРµ: '+s.state+(s.message?' вЂ” '+s.message:''));
-    if(s.state==='diag'){ dbg('СЏРґСЂРѕ: '+String(s.message||'').trim().replace(/\n/g,' | ')); return; }
+    dbg('событие: '+s.state+(s.message?' — '+s.message:''));
+    if(s.state==='diag'){ dbg('ядро: '+String(s.message||'').trim().replace(/\n/g,' | ')); return; }
     if(s.state==='connected') setUiConnected(true);
-    else if(s.state==='cached'){ setUiConnected(true); toast('вљ  '+(s.message||'СЂР°Р±РѕС‚Р°СЋ РЅР° Р·Р°РєСЌС€РёСЂРѕРІР°РЅРЅРѕР№ РїРѕРґРїРёСЃРєРµ')); }
+    else if(s.state==='cached'){ setUiConnected(true); toast('⚠ '+(s.message||'работаю на закэшированной подписке')); }
     else if(s.state==='disconnected') setUiConnected(false);
-    else if(s.state==='error'){ setUiConnected(false); toast('VPN: '+(s.message||'РѕС€РёР±РєР°')); }
+    else if(s.state==='error'){ setUiConnected(false); toast('VPN: '+(s.message||'ошибка')); }
   });
 }
 
-// ---------- СЃРµСЂРІРµСЂС‹ РёР· API СЏРґСЂР° ----------
+// ---------- серверы из API ядра ----------
 function updateHomeServer(name, ping){
   const f=document.getElementById('home-flag'), nm=document.getElementById('home-name'), mt=document.getElementById('home-meta'), pg=document.getElementById('home-ping');
-  if(!name){ f.style.display='none'; nm.textContent='РќРµ РІС‹Р±СЂР°РЅ'; mt.textContent='РџРћР”РџРРЎРљРђ РќР• РџРћР”РљР›Р®Р§Р•РќРђ'; pg.textContent=''; return; }
+  if(!name){ f.style.display='none'; nm.textContent='Не выбран'; mt.textContent='ПОДПИСКА НЕ ПОДКЛЮЧЕНА'; pg.textContent=''; return; }
   const c=countryCode(name);
   if(c){ f.src='flags/'+c+'.svg'; f.style.display=''; } else f.style.display='none';
-  nm.textContent=cleanName(name); mt.textContent='РђРљРўРР’РќР«Р™ РЎР•Р Р’Р•Р ';
-  pg.textContent = (ping&&ping>0) ? ping+' РјСЃ' : ''; pg.style.color=ping?pingColor(ping):'';
+  nm.textContent=cleanName(name); mt.textContent='АКТИВНЫЙ СЕРВЕР';
+  pg.textContent = (ping&&ping>0) ? ping+' мс' : ''; pg.style.color=ping?pingColor(ping):'';
 }
 
 function setServersNote(txt){ document.getElementById('server-list').innerHTML='<div class="list-note">'+txt+'</div>'; }
-// ---------- РєР»Р°СЃСЃРёС‡РµСЃРєРёРµ РіСЂСѓРїРїС‹-СЃРµР»РµРєС‚РѕСЂС‹ (РєР°Рє FlClash/mihomo) ----------
+// ---------- классические группы-селекторы (как FlClash/mihomo) ----------
 let _proxies=null, expandedGroups={};
 function q(s){ return String(s).replace(/\\/g,'\\\\').replace(/'/g,"\\'"); }
 function isGroup(p){ return p && Array.isArray(p.all); }
 function isSelector(p){ return p && String(p.type||'').toLowerCase()==='selector'; }
-// РїРѕСЂСЏРґРѕРє РіСЂСѓРїРї Р±РµСЂС‘Рј РёР· GLOBAL.all (Рјihomo С…СЂР°РЅРёС‚ С‚Р°Рј РїРѕСЂСЏРґРѕРє РєРѕРЅС„РёРіР°), GLOBAL РїСЂСЏС‡РµРј
+// порядок групп берём из GLOBAL.all (мihomo хранит там порядок конфига), GLOBAL прячем
 function orderedGroups(P){
-  // РїСЂСЏС‡РµРј GLOBAL Рё РіСЂСѓРїРїС‹ СЃ hidden:true (mihomo РїРѕРјРµС‡Р°РµС‚ СЃР»СѓР¶РµР±РЅС‹Рµ вЂ” РєР°Рє РІРѕ FlClash)
+  // прячем GLOBAL и группы с hidden:true (mihomo помечает служебные — как во FlClash)
   const names=Object.keys(P).filter(n=>isGroup(P[n]) && n!=='GLOBAL' && !P[n].hidden);
   const gl=(P['GLOBAL']&&Array.isArray(P['GLOBAL'].all))?P['GLOBAL'].all.filter(n=>names.includes(n)):[];
   const order=gl.slice();
   for(const n of names) if(!order.includes(n)) order.push(n);
   return order;
 }
-// В«РѕСЃРЅРѕРІРЅР°СЏВ» РіСЂСѓРїРїР° РґР»СЏ РіР»Р°РІРЅРѕРіРѕ СЌРєСЂР°РЅР° вЂ” РїРµСЂРІС‹Р№ СЃРµР»РµРєС‚РѕСЂ (Р»СѓС‡С€Рµ СЃ РёРјРµРЅРµРј РїСЂРѕ РѕСЃРЅРѕРІРЅРѕР№ С‚СЂР°С„РёРє)
+// «основная» группа для главного экрана — первый селектор (лучше с именем про основной трафик)
 function pickMainGroup(P, order){
   const sel=order.filter(n=>isSelector(P[n]));
-  return sel.find(n=>/Р·Р°СЂСѓР±РµР¶|proxy|select|иЉ‚з‚№|зЇЂз‚№|fast|Р±С‹СЃС‚СЂ|РѕСЃРЅРѕРІ|main/i.test(n)) || sel[0] || order[0] || null;
+  return sel.find(n=>/зарубеж|proxy|select|节点|節点|fast|быстр|основ|main/i.test(n)) || sel[0] || order[0] || null;
 }
 async function loadProxies(){
   if(!connected) return;
   const r=await core('GET','/proxies');
   if(!r.ok || !r.data || !r.data.proxies){
-    document.getElementById('servers-sub').textContent='РџРћР”РљР›Р®Р§Р•РќРР•вЂ¦';
-    setServersNote('РЇРґСЂРѕ РµС‰С‘ РїРѕРґРЅРёРјР°РµС‚СЃСЏвЂ¦ РїРѕРґРѕР¶РґРёС‚Рµ РїР°СЂСѓ СЃРµРєСѓРЅРґ. Р•СЃР»Рё РґРѕР»РіРѕ вЂ” РїСЂРѕРІРµСЂСЊС‚Рµ РїРѕРґРїРёСЃРєСѓ.');
+    document.getElementById('servers-sub').textContent='ПОДКЛЮЧЕНИЕ…';
+    setServersNote('Ядро ещё поднимается… подождите пару секунд. Если долго — проверьте подписку.');
     return;
   }
   _proxies=r.data.proxies; renderProxies();
@@ -640,24 +640,24 @@ function renderProxies(){
   const P=_proxies; if(!P) return;
   const order=orderedGroups(P);
   if(!order.length){
-    document.getElementById('servers-sub').textContent='Р—РђР“Р РЈР—РљРђ';
-    setServersNote('РЇРґСЂРѕ Р·Р°РіСЂСѓР¶Р°РµС‚ РєРѕРЅС„РёРі. Р•СЃР»Рё РїСѓСЃС‚Рѕ вЂ” СЃСЃС‹Р»РєР° РЅРµРґРѕСЃС‚СѓРїРЅР° РёР»Рё СЌС‚Рѕ РЅРµ clash/mihomo-РєРѕРЅС„РёРі.');
+    document.getElementById('servers-sub').textContent='ЗАГРУЗКА';
+    setServersNote('Ядро загружает конфиг. Если пусто — ссылка недоступна или это не clash/mihomo-конфиг.');
     return;
   }
-  document.getElementById('servers-sub').textContent=order.length+' Р“Р РЈРџРџ';
-  const ping=n=>{ const d=delays[n]; return d===undefined?'':(d>0?`<span class="ping" style="color:${pingColor(d)}">${d} РјСЃ</span>`:`<span class="ping" style="color:var(--bad)">вЂ”</span>`); };
-  const GROUP_TAG={selector:'РЎР•Р›Р•РљРўРћР ',urltest:'РђР’РўРћ В· РџРћ РџРРќР“РЈ',fallback:'Р¤РћР›Р‘Р­Рљ',loadbalance:'Р‘РђР›РђРќРЎ',relay:'Р¦Р•РџР¬'};
-  let html=`<div class="row" onclick="pingAll()"><div class="grow"><div class="t">РџСЂРѕРІРµСЂРёС‚СЊ Р·Р°РґРµСЂР¶РєРё</div><div class="s">РџРРќР“ Р’РЎР•РҐ РЎР•Р Р’Р•Р РћР’</div></div><span class="chev">вџі</span></div>`;
+  document.getElementById('servers-sub').textContent=order.length+' ГРУПП';
+  const ping=n=>{ const d=delays[n]; return d===undefined?'':(d>0?`<span class="ping" style="color:${pingColor(d)}">${d} мс</span>`:`<span class="ping" style="color:var(--bad)">—</span>`); };
+  const GROUP_TAG={selector:'СЕЛЕКТОР',urltest:'АВТО · ПО ПИНГУ',fallback:'ФОЛБЭК',loadbalance:'БАЛАНС',relay:'ЦЕПЬ'};
+  let html=`<div class="row" onclick="pingAll()"><div class="grow"><div class="t">Проверить задержки</div><div class="s">ПИНГ ВСЕХ СЕРВЕРОВ</div></div><span class="chev">⟳</span></div>`;
   for(const gn of order){
     const g=P[gn], sel=isSelector(g), open=!!expandedGroups[gn], now=g.now||'';
     const type=String(g.type||'').toLowerCase();
     const tag=GROUP_TAG[type]||type.toUpperCase();
-    const roBadge=sel?'':'<span class="ro-badge">С‚РѕР»СЊРєРѕ&nbsp;РїСЂРѕСЃРјРѕС‚СЂ</span>';
-    html+=`<div class="row grp-row" onclick="toggleGroup('${q(gn)}')">${flagImg(now,'flag')}<div class="grow"><div class="t">${esc(gn)}</div><div class="s">${tag} В· ${esc(cleanName(now))||'вЂ”'}</div></div>${roBadge}<span class="chev">${open?'в–ґ':'в–ѕ'}</span></div>`;
+    const roBadge=sel?'':'<span class="ro-badge">только&nbsp;просмотр</span>';
+    html+=`<div class="row grp-row" onclick="toggleGroup('${q(gn)}')">${flagImg(now,'flag')}<div class="grow"><div class="t">${esc(gn)}</div><div class="s">${tag} · ${esc(cleanName(now))||'—'}</div></div>${roBadge}<span class="chev">${open?'▴':'▾'}</span></div>`;
     if(open){
       html+=g.all.map(n=>{
         const active=n===now;
-        return `<div class="row node-row"${sel?` onclick="selectNode('${q(gn)}','${q(n)}')"`:' style="opacity:.65"'}>${flagImg(n,'flag')}<div class="grow"><div class="t" style="font-size:14px">${esc(cleanName(n))}</div><div class="s">${active?'в—Џ Р’Р«Р‘Р РђРќ':(sel?'':'РђР’РўРћ')}</div></div>${ping(n)}</div>`;
+        return `<div class="row node-row"${sel?` onclick="selectNode('${q(gn)}','${q(n)}')"`:' style="opacity:.65"'}>${flagImg(n,'flag')}<div class="grow"><div class="t" style="font-size:14px">${esc(cleanName(n))}</div><div class="s">${active?'● ВЫБРАН':(sel?'':'АВТО')}</div></div>${ping(n)}</div>`;
       }).join('');
     }
   }
@@ -666,15 +666,15 @@ function renderProxies(){
   if(main) updateHomeServer(P[main].now, delays[P[main].now]);
 }
 function toggleGroup(n){ expandedGroups[n]=!expandedGroups[n]; renderProxies(); }
-// РїРѕРєР°Р·Р°С‚СЊ СЃРѕС…СЂР°РЅС‘РЅРЅС‹Р№ СЃРїРёСЃРѕРє СЃРµСЂРІРµСЂРѕРІ, РєРѕРіРґР° С‚СѓРЅРЅРµР»СЊ РІС‹РєР»СЋС‡РµРЅ
+// показать сохранённый список серверов, когда туннель выключен
 function renderCachedServers(){
   _proxies=null; expandedGroups={};
   const sub=document.getElementById('servers-sub'), list=document.getElementById('server-list');
-  sub.textContent='РќР• РџРћР”РљР›Р®Р§Р•РќРћ';
-  list.innerHTML='<div class="list-note">РџРѕРґРєР»СЋС‡РёС‚РµСЃСЊ, С‡С‚РѕР±С‹ СѓРІРёРґРµС‚СЊ РіСЂСѓРїРїС‹-СЃРµР»РµРєС‚РѕСЂС‹ РїРѕРґРїРёСЃРєРё Рё РІС‹Р±СЂР°С‚СЊ СЃРµСЂРІРµСЂ РІ РєР°Р¶РґРѕР№.</div>';
+  sub.textContent='НЕ ПОДКЛЮЧЕНО';
+  list.innerHTML='<div class="list-note">Подключитесь, чтобы увидеть группы-селекторы подписки и выбрать сервер в каждой.</div>';
 }
 
-// ---------- РїСЂРµРІСЊСЋ СЃРµСЂРІРµСЂРѕРІ РёР· РїРѕРґРїРёСЃРєРё (Р±РµР· Р·Р°РїСѓСЃРєР° VPN) ----------
+// ---------- превью серверов из подписки (без запуска VPN) ----------
 function b64decode(s){ try{ return decodeURIComponent(escape(atob(s.replace(/\s+/g,'')))); }catch(e){ try{ return atob(s.replace(/\s+/g,'')); }catch{ return ''; } } }
 function parseV2rayNames(text){
   const t=text.trim(); let body=t;
@@ -691,9 +691,9 @@ function parseClashNames(text){
   if(!/proxies\s*:/.test(text)) return [];
   const m=text.match(/(?:^|\n)proxies\s*:\s*\n([\s\S]*?)(?:\n[a-zA-Z][\w-]*\s*:|\s*$)/);
   const block = m ? m[1] : '';
-  // РљР»СЋС‡ name РґРѕР»Р¶РµРЅ СЃС‚РѕСЏС‚СЊ РІ РЅР°С‡Р°Р»Рµ СЃС‚СЂРѕРєРё (РјРѕР¶РЅРѕ РїРѕСЃР»Рµ В«- В» РёР»Рё В«- {В»). Р‘РµР· СЌС‚РѕР№
-  // РїСЂРёРІСЏР·РєРё РІ СЃРїРёСЃРѕРє РїРѕРїР°РґР°Р»Рё grpc-service-name Рё early-data-header-name: РІРЅСѓС‚СЂРё РЅРёС…
-  // С‚РѕР¶Рµ РµСЃС‚СЊ СЃР»РѕРІРѕ name, Рё РЅР° РіСЂР°РЅРёС†Рµ РїРѕСЃР»Рµ РґРµС„РёСЃР° РѕРЅРѕ РјР°С‚С‡РёР»РѕСЃСЊ РєР°Рє РѕС‚РґРµР»СЊРЅС‹Р№ РєР»СЋС‡.
+  // Ключ name должен стоять в начале строки (можно после «- » или «- {»). Без этой
+  // привязки в список попадали grpc-service-name и early-data-header-name: внутри них
+  // тоже есть слово name, и на границе после дефиса оно матчилось как отдельный ключ.
   const names=[]; const re=/(?:^|\n)[ \t]*(?:-[ \t]*\{?[ \t]*)?name[ \t]*:[ \t]*(['"]?)([^'"\n,}]+)\1/g; let x;
   while((x=re.exec(block))){ const n=x[2].trim(); if(n) names.push(n); }
   return names;
@@ -702,42 +702,42 @@ function parseSubNames(text){ const v=parseV2rayNames(text); return v.length?v:p
 
 function getPreferred(){ return localStorage.getItem('mise_preferred'); }
 function preSelect(name){
-  localStorage.setItem('mise_preferred', name); toast('РЎРµСЂРІРµСЂ РїРѕ СѓРјРѕР»С‡Р°РЅРёСЋ: '+cleanName(name));
+  localStorage.setItem('mise_preferred', name); toast('Сервер по умолчанию: '+cleanName(name));
   const c=safeJson(localStorage.getItem('mise_lastServers')); if(c&&c.all) renderPreviewServers(c.all);
 }
 function renderPreviewServers(names){
   const pref=getPreferred();
-  document.getElementById('servers-sub').textContent=names.length+' РЈР—Р›РћР’ В· РџР Р•Р’Р¬Р®';
+  document.getElementById('servers-sub').textContent=names.length+' УЗЛОВ · ПРЕВЬЮ';
   document.getElementById('server-list').innerHTML=
-    '<div class="list-note">РџРёРЅРі Рё РїРѕРґРєР»СЋС‡РµРЅРёРµ вЂ” РїРѕСЃР»Рµ Р·Р°РїСѓСЃРєР° VPN. РўР°Рї вЂ” РІС‹Р±СЂР°С‚СЊ СЃРµСЂРІРµСЂ РїРѕ СѓРјРѕР»С‡Р°РЅРёСЋ.</div>'+
+    '<div class="list-note">Пинг и подключение — после запуска VPN. Тап — выбрать сервер по умолчанию.</div>'+
     names.map(n=>{
       const active=n===pref;
-      return `<div class="row" onclick="preSelect('${n.replace(/'/g,"\\'")}')">${flagImg(n,'flag')}<div class="grow"><div class="t">${esc(cleanName(n))}</div><div class="s">${active?'в—Џ Р’Р«Р‘Р РђРќ':''}</div></div></div>`;
+      return `<div class="row" onclick="preSelect('${n.replace(/'/g,"\\'")}')">${flagImg(n,'flag')}<div class="grow"><div class="t">${esc(cleanName(n))}</div><div class="s">${active?'● ВЫБРАН':''}</div></div></div>`;
     }).join('');
 }
 async function previewServers(){
   const sub=getSubUrl();
   const subEl=document.getElementById('servers-sub'), list=document.getElementById('server-list');
-  if(!sub){ subEl.textContent='РќР•Рў РџРћР”РџРРЎРљР'; list.innerHTML='<div class="list-note">Р”РѕР±Р°РІСЊС‚Рµ РїРѕРґРїРёСЃРєСѓ РЅР° РІРєР»Р°РґРєРµ В«РџРѕРґРїРёСЃРєРёВ».</div>'; return; }
+  if(!sub){ subEl.textContent='НЕТ ПОДПИСКИ'; list.innerHTML='<div class="list-note">Добавьте подписку на вкладке «Подписки».</div>'; return; }
   if(!Vpn || !Vpn.fetchSub){ renderCachedServers(); return; }
-  subEl.textContent='Р—РђР“Р РЈР—РљРђвЂ¦'; list.innerHTML='<div class="list-note">Р—Р°РіСЂСѓР¶Р°СЋ СЃРїРёСЃРѕРє СЃРµСЂРІРµСЂРѕРІ РёР· РїРѕРґРїРёСЃРєРёвЂ¦</div>';
+  subEl.textContent='ЗАГРУЗКА…'; list.innerHTML='<div class="list-note">Загружаю список серверов из подписки…</div>';
   const r=await Vpn.fetchSub({url:sub, hwid:getHwid(), userAgent:getUserAgent()});
   if(!r || r.status<200 || r.status>=300 || !r.body){ dbg('fetchSub status='+(r&&r.status)+' err='+((r&&r.error)||'')); renderCachedServers(); return; }
-  // fetchSub РѕС‚РґР°С‘С‚ СѓР¶Рµ СЃРєРѕРЅРІРµСЂС‚РёСЂРѕРІР°РЅРЅС‹Р№ mihomo-YAML, РєР°РєРёРј Р±С‹ РЅРё Р±С‹Р» С„РѕСЂРјР°С‚ РїР°РЅРµР»Рё
-  if(r.format){ dbg('С„РѕСЂРјР°С‚ РїРѕРґРїРёСЃРєРё: '+r.format+' СѓР·Р»РѕРІ='+(r.proxies||0)+' РіСЂСѓРїРї='+(r.groups||0)); localStorage.setItem('mise_subFormat', r.formatLabel||r.format); }
-  if(r.notes) dbg('РєРѕРЅРІРµСЂС‚РµСЂ: '+String(r.notes).replace(/\n/g,' | '));
+  // fetchSub отдаёт уже сконвертированный mihomo-YAML, каким бы ни был формат панели
+  if(r.format){ dbg('формат подписки: '+r.format+' узлов='+(r.proxies||0)+' групп='+(r.groups||0)); localStorage.setItem('mise_subFormat', r.formatLabel||r.format); }
+  if(r.notes) dbg('конвертер: '+String(r.notes).replace(/\n/g,' | '));
   if(r.error) dbg('fetchSub: '+r.error);
-  // Р”Р»СЏ СЃРєРѕРЅРІРµСЂС‚РёСЂРѕРІР°РЅРЅС‹С… С„РѕСЂРјР°С‚РѕРІ РёРјРµРЅР° РїСЂРёС…РѕРґСЏС‚ РѕС‚ СЃР°РјРѕРіРѕ РєРѕРЅРІРµСЂС‚РµСЂР°: РѕРЅ СѓР¶Рµ Р·РЅР°РµС‚,
-  // С‡С‚Рѕ СѓР·Р»С‹ Р±Р°Р»Р°РЅСЃРёСЂРѕРІС‰РёРєР° РїСЂРµРґР»Р°РіР°СЋС‚СЃСЏ С‡РµСЂРµР· РіСЂСѓРїРїСѓ, Р° РЅРµ РїРѕ РѕС‚РґРµР»СЊРЅРѕСЃС‚Рё.
-  // Р”Р»СЏ СЃРєРІРѕР·РЅРѕРіРѕ mihomo-РєРѕРЅС„РёРіР° РёС… РІСЃС‘ РµС‰С‘ РїСЂРёС…РѕРґРёС‚СЃСЏ РІС‹С‚Р°СЃРєРёРІР°С‚СЊ РёР· YAML.
+  // Для сконвертированных форматов имена приходят от самого конвертера: он уже знает,
+  // что узлы балансировщика предлагаются через группу, а не по отдельности.
+  // Для сквозного mihomo-конфига их всё ещё приходится вытаскивать из YAML.
   const names=(r.names && r.names.length) ? r.names : parseSubNames(r.body);
-  dbg('РїСЂРµРІСЊСЋ: '+names.length+' СЃРµСЂРІРµСЂРѕРІ РёР· РїРѕРґРїРёСЃРєРё');
-  if(!names.length){ subEl.textContent='вЂ”'; list.innerHTML='<div class="list-note">РќРµ СѓРґР°Р»РѕСЃСЊ СЂР°Р·РѕР±СЂР°С‚СЊ СЃРїРёСЃРѕРє. '+esc(r.error||'Р¤РѕСЂРјР°С‚ РїРѕРґРїРёСЃРєРё РЅРµ СЂР°СЃРїРѕР·РЅР°РЅ.')+'</div>'; return; }
+  dbg('превью: '+names.length+' серверов из подписки');
+  if(!names.length){ subEl.textContent='—'; list.innerHTML='<div class="list-note">Не удалось разобрать список. '+esc(r.error||'Формат подписки не распознан.')+'</div>'; return; }
   localStorage.setItem('mise_lastServers', JSON.stringify({all:names, now:getPreferred()}));
   renderSubs();
   renderPreviewServers(names);
 }
-// РїРѕСЃР»Рµ РєРѕРЅРЅРµРєС‚Р° Р¶РґС‘Рј, РїРѕРєР° СЏРґСЂРѕ СЃРєР°С‡Р°РµС‚ РїРѕРґРїРёСЃРєСѓ Рё РїРѕРґРЅРёРјРµС‚ API
+// после коннекта ждём, пока ядро скачает подписку и поднимет API
 async function waitForServers(){
   for(let i=0;i<20;i++){
     if(!connected) return;
@@ -749,7 +749,7 @@ async function waitForServers(){
         if(pref && g.all.includes(pref) && pref!==g.now){ await core('PUT','/proxies/'+encodeURIComponent(GROUP),{name:pref}); }
         loadProxies(); return;
       }
-      if(i===3){ core('PUT','/providers/proxies/main'); } // РїРѕРґС‚РѕР»РєРЅСѓС‚СЊ РѕР±РЅРѕРІР»РµРЅРёРµ РїСЂРѕРІР°Р№РґРµСЂР°
+      if(i===3){ core('PUT','/providers/proxies/main'); } // подтолкнуть обновление провайдера
     }
     loadProxies();
     await sleep(batterySaverOn?3000:1500);
@@ -758,16 +758,16 @@ async function waitForServers(){
 async function selectNode(group, name){
   const r=await core('PUT','/proxies/'+encodeURIComponent(group),{name});
   if(r.ok){ toast(cleanName(name)); loadProxies(); }
-  else toast('РќРµ СѓРґР°Р»РѕСЃСЊ РІС‹Р±СЂР°С‚СЊ (РґР»СЏ Р°РІС‚Рѕ-РіСЂСѓРїРї РІС‹Р±РѕСЂ РЅРµРґРѕСЃС‚СѓРїРµРЅ)');
+  else toast('Не удалось выбрать (для авто-групп выбор недоступен)');
 }
 async function pingAll(){
   if(!connected) return;
   if(!_proxies){ const r=await core('GET','/proxies'); if(r.ok&&r.data) _proxies=r.data.proxies; }
-  const P=_proxies; if(!P){ toast('РќРµС‚ РґР°РЅРЅС‹С…'); return; }
+  const P=_proxies; if(!P){ toast('Нет данных'); return; }
   const skip=['DIRECT','REJECT','REJECT-DROP','PASS','COMPATIBLE','GLOBAL'];
   const leafs=[...new Set(Object.keys(P).filter(n=>!isGroup(P[n]) && !skip.includes(n)))];
-  if(!leafs.length){ toast('РќРµС‚ СЃРµСЂРІРµСЂРѕРІ'); return; }
-  toast('РџСЂРѕРІРµСЂРєР° Р·Р°РґРµСЂР¶РµРєвЂ¦');
+  if(!leafs.length){ toast('Нет серверов'); return; }
+  toast('Проверка задержек…');
   await Promise.all(leafs.map(async n=>{
     const rr=await core('GET','/proxies/'+encodeURIComponent(n)+'/delay?timeout=3000&url='+encodeURIComponent('http://www.gstatic.com/generate_204'));
     delays[n]=(rr.data && typeof rr.data.delay==='number')?rr.data.delay:-1;
@@ -775,10 +775,10 @@ async function pingAll(){
   renderProxies();
 }
 
-// ---------- РїРѕРґРїРёСЃРєР° (РјРѕРґР°Р»РєР° РІРјРµСЃС‚Рѕ prompt) ----------
+// ---------- подписка (модалка вместо prompt) ----------
 function addSubscription(){ openSubModal(); }
 function openSubModal(){
-  const inp=document.getElementById('sub-input'); inp.value=''; // РІСЃРµРіРґР° РґРѕР±Р°РІР»СЏРµРј РЅРѕРІСѓСЋ
+  const inp=document.getElementById('sub-input'); inp.value=''; // всегда добавляем новую
   document.getElementById('sub-modal').classList.remove('hidden');
   setTimeout(()=>inp.focus(),50);
 }
@@ -793,7 +793,7 @@ function closeUaModal(){ document.getElementById('ua-modal').classList.add('hidd
 function renderUaPresets(){
   const cur=(document.getElementById('ua-input').value||'').trim();
   document.getElementById('ua-presets').innerHTML=UA_PRESETS.map(p=>
-    `<div class="row" onclick="pickUaPreset('${p.ua.replace(/'/g,"\\'")}')"><div class="grow"><div class="t">${esc(p.t)}</div><div class="s">${esc(p.s)}</div></div>${p.ua===cur?'<span class="chev">в—Џ</span>':''}</div>`
+    `<div class="row" onclick="pickUaPreset('${p.ua.replace(/'/g,"\\'")}')"><div class="grow"><div class="t">${esc(p.t)}</div><div class="s">${esc(p.s)}</div></div>${p.ua===cur?'<span class="chev">●</span>':''}</div>`
   ).join('');
 }
 function pickUaPreset(ua){ document.getElementById('ua-input').value=ua; renderUaPresets(); }
@@ -802,7 +802,7 @@ function saveUaModal(){
   setUserAgent(document.getElementById('ua-input').value);
   closeUaModal();
   if(getUserAgent()!==was){
-    // С„РѕСЂРјР°С‚ РѕС‚РІРµС‚Р° РїР°РЅРµР»Рё РјРµРЅСЏРµС‚СЃСЏ РІРјРµСЃС‚Рµ СЃ UA вЂ” РїРµСЂРµС‡РёС‚С‹РІР°РµРј РїРѕРґРїРёСЃРєСѓ
+    // формат ответа панели меняется вместе с UA — перечитываем подписку
     localStorage.removeItem('mise_subFormat');
     renderSubs();
     toast('User-Agent: '+getUserAgent());
@@ -812,22 +812,22 @@ function saveUaModal(){
 function renderSubs(){
   const list=subs(), act=activeSubId(), box=document.getElementById('subs-list');
   const cnt=document.getElementById('subs-count');
-  if(cnt) cnt.textContent = list.length ? (list.length===1?'1 РџРћР”РџРРЎРљРђ':list.length+' РџРћР”РџРРЎРћРљ') : 'РќР•Рў РџРћР”РџРРЎРћРљ';
+  if(cnt) cnt.textContent = list.length ? (list.length===1?'1 ПОДПИСКА':list.length+' ПОДПИСОК') : 'НЕТ ПОДПИСОК';
   if(!box) return;
-  if(!list.length){ box.innerHTML='<div class="list-note">Р”РѕР±Р°РІСЊС‚Рµ СЃСЃС‹Р»РєСѓ РЅР° РїРѕРґРїРёСЃРєСѓ вЂ” mihomo YAML, Xray JSON РёР»Рё СЃРїРёСЃРѕРє СЃСЃС‹Р»РѕРє.</div>'; return; }
+  if(!list.length){ box.innerHTML='<div class="list-note">Добавьте ссылку на подписку — mihomo YAML, Xray JSON или список ссылок.</div>'; return; }
   const fmt=localStorage.getItem('mise_subFormat');
   box.innerHTML=list.map(s=>{
     const on=s.id===act;
-    const sub=on ? ('РђРљРўРР’РќРђ'+(fmt?' В· '+fmt.toUpperCase():'')) : esc(s.url.replace(/^https?:\/\//,'').slice(0,38));
+    const sub=on ? ('АКТИВНА'+(fmt?' · '+fmt.toUpperCase():'')) : esc(s.url.replace(/^https?:\/\//,'').slice(0,38));
     return `<div class="row" onclick="switchSub('${q(s.id)}')">`+
       `<span class="flag" style="background:${on?'var(--ok)':'var(--ln)'}"></span>`+
       `<div class="grow"><div class="t">${esc(s.name)}</div><div class="s">${sub}</div></div>`+
-      `<span class="chev" onclick="delSub('${q(s.id)}',event)">вњ•</span></div>`;
+      `<span class="chev" onclick="delSub('${q(s.id)}',event)">✕</span></div>`;
   }).join('');
 }
 
-// ---------- СЂРµР¶РёРј РјР°СЂС€СЂСѓС‚РёР·Р°С†РёРё ----------
-const MODES=[{v:'rule',l:'РџР РђР’РР›Рђ'},{v:'global',l:'Р“Р›РћР‘РђР›Р¬РќРћ'},{v:'direct',l:'РџР РЇРњРћР™'}];
+// ---------- режим маршрутизации ----------
+const MODES=[{v:'rule',l:'ПРАВИЛА'},{v:'global',l:'ГЛОБАЛЬНО'},{v:'direct',l:'ПРЯМОЙ'}];
 function curMode(){ return localStorage.getItem('mise_mode')||'rule'; }
 function applyModeLabel(){ const m=MODES.find(x=>x.v===curMode())||MODES[0]; const el=document.getElementById('mode-lbl'); if(el) el.textContent=m.l; }
 async function applyModeToCore(){
@@ -838,15 +838,15 @@ async function cycleMode(){
   const i=MODES.findIndex(x=>x.v===curMode()); const next=MODES[(i+1)%MODES.length];
   localStorage.setItem('mise_mode', next.v); applyModeLabel();
   if(connected){ await applyModeToCore(); }
-  toast('Р РµР¶РёРј: '+next.l);
+  toast('Режим: '+next.l);
 }
 
-// ---------- Рѕ РїСЂРёР»РѕР¶РµРЅРёРё ----------
-function showAbout(){ toast('Misetanibox '+BUILD+' В· Р°РІС‚РѕСЂС‹: rakexzp, @14Unight'); }
+// ---------- о приложении ----------
+function showAbout(){ toast('Misetanibox '+BUILD+' · авторы: rakexzp, @14Unight'); }
 
 
-// ---------- РџР РђР’РР›Рђ ----------
-// РџСЂРµСЃРµС‚С‹ СЂР°Р·РІРѕСЂР°С‡РёРІР°СЋС‚СЃСЏ РІ РїСЂР°РІРёР»Р° mihomo РїСЂРё СЃР±РѕСЂРєРµ РєРѕРЅС„РёРіР°.
+// ---------- ПРАВИЛА ----------
+// Пресеты разворачиваются в правила mihomo при сборке конфига.
 const RULE_PRESETS = {
   ru:  ['GEOIP,RU,DIRECT'],
   ads: ['GEOSITE,category-ads-all,REJECT'],
@@ -856,7 +856,7 @@ function presetsOn(){ try{ return JSON.parse(localStorage.getItem('mise_presets'
 function customRules(){ try{ return JSON.parse(localStorage.getItem('mise_rules')||'[]'); }catch{ return []; } }
 function saveCustomRules(list){ localStorage.setItem('mise_rules', JSON.stringify(list)); }
 
-// РС‚РѕРіРѕРІС‹Р№ СЃРїРёСЃРѕРє РїСЂР°РІРёР»: СЃРІРѕРё вЂ” РІС‹С€Рµ РїСЂРµСЃРµС‚РѕРІ, MATCH РґРѕРїРёСЃС‹РІР°РµС‚ РЅР°С‚РёРІРЅР°СЏ С‡Р°СЃС‚СЊ.
+// Итоговый список правил: свои — выше пресетов, MATCH дописывает нативная часть.
 function buildRuleList(){
   const out = [...customRules()];
   for(const k of presetsOn()) out.push(...(RULE_PRESETS[k]||[]));
@@ -875,16 +875,16 @@ function togglePreset(k, btn){
   if(i>=0) on.splice(i,1); else on.push(k);
   localStorage.setItem('mise_presets', JSON.stringify(on));
   btn.classList.toggle('on');
-  if(connected) toast('РџСЂРёРјРµРЅРёС‚СЃСЏ РїСЂРё СЃР»РµРґСѓСЋС‰РµРј РїРѕРґРєР»СЋС‡РµРЅРёРё');
+  if(connected) toast('Применится при следующем подключении');
 }
 function renderRules(){
   const list=document.getElementById('rules-list'), cnt=document.getElementById('rules-count');
   if(!list) return;
   const rules=customRules();
-  if(cnt) cnt.textContent = rules.length ? rules.length+' РЎР’РћРРҐ РџР РђР’РР›' : 'РќР•Рў РЎР’РћРРҐ РџР РђР’РР›';
-  list.innerHTML = rules.map((r,i)=>`<div class="row"><div class="grow"><div class="t" style="font-size:14px">${esc(r.split(',')[1]||'')}</div><div class="rule-line">${esc(r)}</div></div><span class="chev" onclick="delRule(${i})">вњ•</span></div>`).join('');
+  if(cnt) cnt.textContent = rules.length ? rules.length+' СВОИХ ПРАВИЛ' : 'НЕТ СВОИХ ПРАВИЛ';
+  list.innerHTML = rules.map((r,i)=>`<div class="row"><div class="grow"><div class="t" style="font-size:14px">${esc(r.split(',')[1]||'')}</div><div class="rule-line">${esc(r)}</div></div><span class="chev" onclick="delRule(${i})">✕</span></div>`).join('');
 }
-function delRule(i){ const r=customRules(); r.splice(i,1); saveCustomRules(r); renderRules(); if(connected) toast('РџСЂРёРјРµРЅРёС‚СЃСЏ РїСЂРё СЃР»РµРґСѓСЋС‰РµРј РїРѕРґРєР»СЋС‡РµРЅРёРё'); }
+function delRule(i){ const r=customRules(); r.splice(i,1); saveCustomRules(r); renderRules(); if(connected) toast('Применится при следующем подключении'); }
 
 let ruleType='DOMAIN-SUFFIX', ruleTarget='PROXY';
 function openRuleModal(){ ruleType='DOMAIN-SUFFIX'; ruleTarget='PROXY'; document.getElementById('rule-value').value='';
@@ -894,37 +894,37 @@ function openRuleModal(){ ruleType='DOMAIN-SUFFIX'; ruleTarget='PROXY'; document
 function closeRuleModal(){ document.getElementById('rule-modal').classList.add('hidden'); }
 function setRuleType(b){ ruleType=b.dataset.rt; document.querySelectorAll('[data-rt]').forEach(x=>x.classList.toggle('active',x===b));
   const inp=document.getElementById('rule-value');
-  inp.placeholder = ruleType==='IP-CIDR' ? 'РЅР°РїСЂРёРјРµСЂ: 1.2.3.0/24' : (ruleType==='PROCESS-NAME' ? 'РЅР°РїСЂРёРјРµСЂ: com.google.chrome' : 'РЅР°РїСЂРёРјРµСЂ: example.com'); }
+  inp.placeholder = ruleType==='IP-CIDR' ? 'например: 1.2.3.0/24' : (ruleType==='PROCESS-NAME' ? 'например: com.google.chrome' : 'например: example.com'); }
 function setRuleTarget(b){ ruleTarget=b.dataset.rtg; document.querySelectorAll('[data-rtg]').forEach(x=>x.classList.toggle('active',x===b)); }
 function saveRule(){
   let v=(document.getElementById('rule-value').value||'').trim();
-  if(!v){ toast('Р’РІРµРґРёС‚Рµ Р·РЅР°С‡РµРЅРёРµ'); return; }
-  if(v.includes(',')){ toast('Р—Р°РїСЏС‚С‹Рµ РІ Р·РЅР°С‡РµРЅРёРё РЅРµРґРѕРїСѓСЃС‚РёРјС‹'); return; }
-  // РґР»СЏ IP-CIDR mihomo С‚СЂРµР±СѓРµС‚ РјР°СЃРєСѓ
+  if(!v){ toast('Введите значение'); return; }
+  if(v.includes(',')){ toast('Запятые в значении недопустимы'); return; }
+  // для IP-CIDR mihomo требует маску
   if(ruleType==='IP-CIDR' && !v.includes('/')) v += '/32';
   let rule = `${ruleType},${v},${ruleTarget}`;
   if(ruleType==='IP-CIDR') rule += ',no-resolve';
   const list=customRules(); list.push(rule); saveCustomRules(list);
   closeRuleModal(); renderRules();
-  if(connected) toast('РџСЂРёРјРµРЅРёС‚СЃСЏ РїСЂРё СЃР»РµРґСѓСЋС‰РµРј РїРѕРґРєР»СЋС‡РµРЅРёРё');
+  if(connected) toast('Применится при следующем подключении');
 }
 
-// ---------- Р¦Р•РџРћР§РљР ----------
+// ---------- ЦЕПОЧКИ ----------
 function chains(){ try{ return JSON.parse(localStorage.getItem('mise_chains')||'[]'); }catch{ return []; } }
 function saveChains(list){ localStorage.setItem('mise_chains', JSON.stringify(list)); refreshChainsSub(); }
 function refreshChainsSub(){
   const el=document.getElementById('chains-sub'); if(!el) return;
-  const n=chains().length; el.textContent = n ? n+' Р¦Р•РџРћР§Р•Рљ' : 'РќР•Рў Р¦Р•РџРћР§Р•Рљ';
+  const n=chains().length; el.textContent = n ? n+' ЦЕПОЧЕК' : 'НЕТ ЦЕПОЧЕК';
 }
 function renderChains(){
   const list=document.getElementById('chain-list'); if(!list) return;
   const cs=chains();
   list.innerHTML = cs.length ? cs.map((c,i)=>
-    `<div class="row"><div class="grow"><div class="t">рџ”— ${esc(c.name)}</div><div class="s">Р§Р•Р Р•Р— ${esc(cleanName(c.entry).toUpperCase())}</div></div><span class="chev" onclick="delChain(${i})">вњ•</span></div>`
-  ).join('') : '<div class="list-note">РџРѕРєР° РЅРµС‚ С†РµРїРѕС‡РµРє.</div>';
+    `<div class="row"><div class="grow"><div class="t">🔗 ${esc(c.name)}</div><div class="s">ЧЕРЕЗ ${esc(cleanName(c.entry).toUpperCase())}</div></div><span class="chev" onclick="delChain(${i})">✕</span></div>`
+  ).join('') : '<div class="list-note">Пока нет цепочек.</div>';
   refreshChainsSub();
 }
-function delChain(i){ const c=chains(); c.splice(i,1); saveChains(c); renderChains(); if(connected) toast('РџСЂРёРјРµРЅРёС‚СЃСЏ РїСЂРё СЃР»РµРґСѓСЋС‰РµРј РїРѕРґРєР»СЋС‡РµРЅРёРё'); }
+function delChain(i){ const c=chains(); c.splice(i,1); saveChains(c); renderChains(); if(connected) toast('Применится при следующем подключении'); }
 
 let chainEntry='';
 function openChainModal(){
@@ -936,16 +936,16 @@ function openChainModal(){
 }
 function closeChainModal(){ document.getElementById('chain-modal').classList.add('hidden'); }
 function chainNodeSource(){
-  // СЃРїРёСЃРѕРє СЃРµСЂРІРµСЂРѕРІ РєСЌС€РёСЂСѓРµС‚СЃСЏ РєР°Рє {all:[...], now:"..."}
+  // список серверов кэшируется как {all:[...], now:"..."}
   const c = safeJson(localStorage.getItem('mise_lastServers'));
   return (c && Array.isArray(c.all)) ? c.all : [];
 }
 function renderChainNodes(){
   const box=document.getElementById('chain-nodes'); if(!box) return;
   const q=(document.getElementById('chain-search').value||'').trim().toLowerCase();
-  const all=chainNodeSource().filter(n=>!n.startsWith('рџ”—')&&!n.startsWith('в›“'));
+  const all=chainNodeSource().filter(n=>!n.startsWith('🔗')&&!n.startsWith('⛓'));
   const items=all.filter(n=>!q||n.toLowerCase().includes(q));
-  if(!items.length){ box.innerHTML='<div class="list-note">РќРµС‚ СЃРµСЂРІРµСЂРѕРІ вЂ” РїРѕРґРєР»СЋС‡РёС‚РµСЃСЊ РёР»Рё РѕР±РЅРѕРІРёС‚Рµ РїРѕРґРїРёСЃРєСѓ.</div>'; return; }
+  if(!items.length){ box.innerHTML='<div class="list-note">Нет серверов — подключитесь или обновите подписку.</div>'; return; }
   box.innerHTML=items.slice(0,200).map(n=>
     `<div class="chain-node${n===chainEntry?' on':''}" onclick="pickChainEntry('${n.replace(/'/g,"\\'")}')">${flagImg(n,'flag')}<div class="grow"><div class="t">${esc(cleanName(n))}</div></div></div>`
   ).join('');
@@ -953,16 +953,16 @@ function renderChainNodes(){
 function pickChainEntry(n){ chainEntry=n; renderChainNodes(); }
 function saveChain(){
   const name=(document.getElementById('chain-name').value||'').trim();
-  if(!name){ toast('Р’РІРµРґРёС‚Рµ РЅР°Р·РІР°РЅРёРµ'); return; }
-  if(!chainEntry){ toast('Р’С‹Р±РµСЂРёС‚Рµ РІС…РѕРґРЅРѕР№ СЃРµСЂРІРµСЂ'); return; }
+  if(!name){ toast('Введите название'); return; }
+  if(!chainEntry){ toast('Выберите входной сервер'); return; }
   const cs=chains();
-  if(cs.some(c=>c.name===name)){ toast('РўР°РєР°СЏ С†РµРїРѕС‡РєР° СѓР¶Рµ РµСЃС‚СЊ'); return; }
+  if(cs.some(c=>c.name===name)){ toast('Такая цепочка уже есть'); return; }
   cs.push({name, entry: chainEntry});
   saveChains(cs); closeChainModal(); renderChains();
-  toast('Р¦РµРїРѕС‡РєР° СЃРѕР·РґР°РЅР° вЂ” РІС‹Р±РµСЂРё В«рџ”— '+name+'В» РІ СЃРїРёСЃРєРµ СЃРµСЂРІРµСЂРѕРІ');
+  toast('Цепочка создана — выбери «🔗 '+name+'» в списке серверов');
 }
 
-// ---------- РћР¤РћР РњР›Р•РќРР•: С†РІРµС‚ Р°РєС†РµРЅС‚Р° ----------
+// ---------- ОФОРМЛЕНИЕ: цвет акцента ----------
 const ACCENTS=['oklch(.76 .17 150)','oklch(.72 .19 25)','oklch(.75 .16 250)','oklch(.8 .16 85)','oklch(.72 .2 320)','oklch(.78 .13 195)'];
 function curAccent(){ return localStorage.getItem('mise_accent')||ACCENTS[0]; }
 function applyAccent(){ document.documentElement.style.setProperty('--ok', curAccent()); }
@@ -972,7 +972,7 @@ function renderAccents(){
 }
 function setAccent(c){ localStorage.setItem('mise_accent', c); applyAccent(); renderAccents(); }
 
-// ---------- Р°РІС‚РѕР·Р°РїСѓСЃРє (РЅР°С‚РёРІРЅС‹Р№ prefs) ----------
+// ---------- автозапуск (нативный prefs) ----------
 async function initAutostart(){
   const b=document.getElementById('tgl-autostart'); if(!b||!Vpn||!Vpn.getAutostart) return;
   try{ const r=await Vpn.getAutostart(); b.classList.toggle('on', !!(r&&r.on)); }catch(e){}
@@ -981,10 +981,10 @@ async function toggleAutostart(btn){
   const on=!btn.classList.contains('on');
   btn.classList.toggle('on',on);
   if(Vpn&&Vpn.setAutostart){ try{ await Vpn.setAutostart({on}); }catch(e){ dbg('setAutostart err: '+e); } }
-  toast(on?'РђРІС‚РѕР·Р°РїСѓСЃРє РІРєР»СЋС‡С‘РЅ':'РђРІС‚РѕР·Р°РїСѓСЃРє РІС‹РєР»СЋС‡РµРЅ');
+  toast(on?'Автозапуск включён':'Автозапуск выключен');
 }
 
-// ---------- РѕС‚РєР»СЋС‡РµРЅРёРµ РїРѕ Р±Р»РѕРєРёСЂРѕРІРєРµ СЌРєСЂР°РЅР° (РЅР°С‚РёРІРЅС‹Р№ prefs, Р°РЅР°Р»РѕРі INCY) ----------
+// ---------- отключение по блокировке экрана (нативный prefs, аналог INCY) ----------
 async function initLockBehavior(){
   const bd=document.getElementById('tgl-lock-disconnect');
   const br=document.getElementById('tgl-lock-reconnect');
@@ -1008,44 +1008,44 @@ async function pushLockBehavior(){
 async function toggleLockDisconnect(btn){
   const on=!btn.classList.contains('on');
   btn.classList.toggle('on',on);
-  // РІС‹РєР»СЋС‡РёР»Рё В«РѕС‚РєР»СЋС‡Р°С‚СЊ РїСЂРё Р±Р»РѕРєРёСЂРѕРІРєРµВ» вЂ” В«РїРѕРґРєР»СЋС‡Р°С‚СЊ РїСЂРё СЂР°Р·Р±Р»РѕРєРёСЂРѕРІРєРµВ» Р±РµР· РЅРµРіРѕ Р±РµСЃСЃРјС‹СЃР»РµРЅРµРЅ
+  // выключили «отключать при блокировке» — «подключать при разблокировке» без него бессмысленен
   if(!on){
     const br=document.getElementById('tgl-lock-reconnect');
     if(br) br.classList.remove('on');
   }
   await pushLockBehavior();
-  toast(on?'РћС‚РєР»СЋС‡РµРЅРёРµ РїСЂРё Р±Р»РѕРєРёСЂРѕРІРєРµ РІРєР»СЋС‡РµРЅРѕ':'РћС‚РєР»СЋС‡РµРЅРёРµ РїСЂРё Р±Р»РѕРєРёСЂРѕРІРєРµ РІС‹РєР»СЋС‡РµРЅРѕ');
+  toast(on?'Отключение при блокировке включено':'Отключение при блокировке выключено');
 }
 async function toggleLockReconnect(btn){
   const bd=document.getElementById('tgl-lock-disconnect');
   if(!bd.classList.contains('on')){
-    toast('РЎРЅР°С‡Р°Р»Р° РІРєР»СЋС‡РёС‚Рµ В«РћС‚РєР»СЋС‡Р°С‚СЊ РїСЂРё Р±Р»РѕРєРёСЂРѕРІРєРµВ»');
+    toast('Сначала включите «Отключать при блокировке»');
     return;
   }
   const on=!btn.classList.contains('on');
   btn.classList.toggle('on',on);
   await pushLockBehavior();
-  toast(on?'РџРµСЂРµРїРѕРґРєР»СЋС‡РµРЅРёРµ РїСЂРё СЂР°Р·Р±Р»РѕРєРёСЂРѕРІРєРµ РІРєР»СЋС‡РµРЅРѕ':'РџРµСЂРµРїРѕРґРєР»СЋС‡РµРЅРёРµ РїСЂРё СЂР°Р·Р±Р»РѕРєРёСЂРѕРІРєРµ РІС‹РєР»СЋС‡РµРЅРѕ');
+  toast(on?'Переподключение при разблокировке включено':'Переподключение при разблокировке выключено');
 }
 
-// ---------- РѕРїС‚РёРјРёР·Р°С†РёСЏ Р±Р°С‚Р°СЂРµРё (РЅСѓР¶РЅР°, С‡С‚РѕР±С‹ С„РѕРЅ РЅРµ СѓР±РёРІР°Р»СЃСЏ РїСЂРѕС€РёРІРєРѕР№) ----------
+// ---------- оптимизация батареи (нужна, чтобы фон не убивался прошивкой) ----------
 async function initBatteryStatus(){
   const el=document.getElementById('batt-sub'); if(!el||!Vpn||!Vpn.isIgnoringBatteryOptimizations) return;
   try{
     const r=await Vpn.isIgnoringBatteryOptimizations();
-    if(r&&r.on) el.textContent='Р РђР—Р Р•РЁР•РќРћ В· Р РђР‘РћРўРђР•Рў Р’ Р¤РћРќР•';
+    if(r&&r.on) el.textContent='РАЗРЕШЕНО · РАБОТАЕТ В ФОНЕ';
   }catch(e){}
 }
 async function requestBatteryIgnore(){
-  if(!Vpn||!Vpn.requestIgnoreBatteryOptimizations){ toast('Р”РѕСЃС‚СѓРїРЅРѕ С‚РѕР»СЊРєРѕ РІ РїСЂРёР»РѕР¶РµРЅРёРё РЅР° СѓСЃС‚СЂРѕР№СЃС‚РІРµ'); return; }
+  if(!Vpn||!Vpn.requestIgnoreBatteryOptimizations){ toast('Доступно только в приложении на устройстве'); return; }
   try{
     const r=await Vpn.requestIgnoreBatteryOptimizations();
-    if(r&&r.alreadyIgnored){ toast('РЈР¶Рµ СЂР°Р·СЂРµС€РµРЅРѕ'); }
+    if(r&&r.alreadyIgnored){ toast('Уже разрешено'); }
     setTimeout(initBatteryStatus, 1500);
-  }catch(e){ dbg('battery opt err: '+e); toast('РћС‚РєСЂС‹Р» РЅР°СЃС‚СЂРѕР№РєРё РїСЂРёР»РѕР¶РµРЅРёСЏ вЂ” РІРєР»СЋС‡РёС‚Рµ РІСЂСѓС‡РЅСѓСЋ'); }
+  }catch(e){ dbg('battery opt err: '+e); toast('Открыл настройки приложения — включите вручную'); }
 }
 
-// ---------- СЌРєРѕРЅРѕРјРёС‡РЅС‹Р№ СЂРµР¶РёРј (РёРЅС‚РµСЂРІР°Р»С‹ РѕРїСЂРѕСЃР° Р·Р°РІРёСЃСЏС‚ РѕС‚ СЌС‚РѕРіРѕ С„Р»Р°РіР°) ----------
+// ---------- экономичный режим (интервалы опроса зависят от этого флага) ----------
 let batterySaverOn=false;
 async function initBatterySaver(){
   if(!Vpn||!Vpn.getBatterySaver) return;
@@ -1060,10 +1060,10 @@ async function toggleBatterySaver(btn){
   btn.classList.toggle('on',on);
   batterySaverOn=on;
   if(Vpn&&Vpn.setBatterySaver){ try{ await Vpn.setBatterySaver({on}); }catch(e){ dbg('setBatterySaver err: '+e); } }
-  toast(on?'Р­РєРѕРЅРѕРјРёС‡РЅС‹Р№ СЂРµР¶РёРј РІРєР»СЋС‡С‘РЅ':'Р­РєРѕРЅРѕРјРёС‡РЅС‹Р№ СЂРµР¶РёРј РІС‹РєР»СЋС‡РµРЅ');
+  toast(on?'Экономичный режим включён':'Экономичный режим выключен');
 }
 
-// ---------- Р°РІС‚РѕРІРєР»СЋС‡РµРЅРёРµ VPN РїРѕ РїСЂРёР»РѕР¶РµРЅРёСЋ ----------
+// ---------- автовключение VPN по приложению ----------
 const triggerSelected=new Set();
 async function initTrigger(){
   if(!Vpn||!Vpn.getAppTriggers) return;
@@ -1082,19 +1082,19 @@ function triggerLabelFor(pkg){
 }
 function refreshTriggerSub(){
   const n=triggerSelected.size;
-  const sub=document.getElementById('trigger-sub'); if(sub) sub.textContent = n ? ('Р’Р«Р‘Р РђРќРћ: '+n) : 'Р’Р«РљР›Р®Р§Р•РќРћ';
+  const sub=document.getElementById('trigger-sub'); if(sub) sub.textContent = n ? ('ВЫБРАНО: '+n) : 'ВЫКЛЮЧЕНО';
   const cur=document.getElementById('trigger-current');
-  if(cur) cur.textContent = n ? [...triggerSelected].map(triggerLabelFor).join(', ') : 'РЅРµ РІС‹Р±СЂР°РЅРѕ';
+  if(cur) cur.textContent = n ? [...triggerSelected].map(triggerLabelFor).join(', ') : 'не выбрано';
 }
 async function refreshUsageAccessUi(){
   const el=document.getElementById('usage-access-sub'); if(!el||!Vpn||!Vpn.hasUsageAccess) return;
   try{
     const r=await Vpn.hasUsageAccess();
-    el.textContent = (r&&r.on) ? 'Р РђР—Р Р•РЁР•РќРћ' : 'РќРђР–РњРРўР•, Р§РўРћР‘Р« Р РђР—Р Р•РЁРРўР¬';
+    el.textContent = (r&&r.on) ? 'РАЗРЕШЕНО' : 'НАЖМИТЕ, ЧТОБЫ РАЗРЕШИТЬ';
   }catch(e){}
 }
 async function requestUsageAccess(){
-  if(!Vpn||!Vpn.requestUsageAccess){ toast('Р”РѕСЃС‚СѓРїРЅРѕ С‚РѕР»СЊРєРѕ РІ РїСЂРёР»РѕР¶РµРЅРёРё РЅР° СѓСЃС‚СЂРѕР№СЃС‚РІРµ'); return; }
+  if(!Vpn||!Vpn.requestUsageAccess){ toast('Доступно только в приложении на устройстве'); return; }
   try{ await Vpn.requestUsageAccess(); setTimeout(refreshUsageAccessUi, 1500); }catch(e){}
 }
 async function openTriggerScreen(){
@@ -1105,18 +1105,18 @@ async function openTriggerScreen(){
 function renderTriggerAppList(){
   const list=document.getElementById('trigger-app-list'); if(!list) return;
   if(!appsCache){ return; }
-  if(!appsCache.length){ list.innerHTML='<div class="list-note">РќРµ СѓРґР°Р»РѕСЃСЊ РїРѕР»СѓС‡РёС‚СЊ СЃРїРёСЃРѕРє РїСЂРёР»РѕР¶РµРЅРёР№.</div>'; return; }
+  if(!appsCache.length){ list.innerHTML='<div class="list-note">Не удалось получить список приложений.</div>'; return; }
   const q=(document.getElementById('trigger-search').value||'').trim().toLowerCase();
   const items=appsCache.filter(a=>!q || (a.label||'').toLowerCase().includes(q) || (a.package||'').toLowerCase().includes(q))
     .sort((a,b)=>{ const sa=triggerSelected.has(a.package)?0:1, sb=triggerSelected.has(b.package)?0:1; return sa-sb || (a.label||'').localeCompare(b.label||'',undefined,{sensitivity:'base'}); });
-  if(!items.length){ list.innerHTML='<div class="list-note">РќРёС‡РµРіРѕ РЅРµ РЅР°Р№РґРµРЅРѕ.</div>'; return; }
+  if(!items.length){ list.innerHTML='<div class="list-note">Ничего не найдено.</div>'; return; }
   list.innerHTML=items.map(a=>{
     const on=triggerSelected.has(a.package);
     const mono=(a.label||a.package||'?').trim().charAt(0);
     return `<div class="app-row" onclick="toggleTriggerApp('${a.package.replace(/'/g,"\\'")}')">
       <div class="app-mono">${esc(mono)}</div>
       <div class="grow"><div class="t">${esc(a.label||a.package)}</div><div class="s">${esc(a.package)}</div></div>
-      <div class="chk${on?' on':''}">вњ“</div></div>`;
+      <div class="chk${on?' on':''}">✓</div></div>`;
   }).join('');
 }
 async function toggleTriggerApp(pkg){
@@ -1124,34 +1124,34 @@ async function toggleTriggerApp(pkg){
   if(Vpn&&Vpn.setAppTriggers){ try{ await Vpn.setAppTriggers({pkgs:[...triggerSelected]}); }catch(e){ dbg('setAppTriggers err: '+e); } }
   refreshTriggerSub();
   renderTriggerAppList();
-  toast(triggerSelected.has(pkg) ? 'Р”РѕР±Р°РІР»РµРЅРѕ: '+triggerLabelFor(pkg) : 'РЈР±СЂР°РЅРѕ: '+triggerLabelFor(pkg));
+  toast(triggerSelected.has(pkg) ? 'Добавлено: '+triggerLabelFor(pkg) : 'Убрано: '+triggerLabelFor(pkg));
 }
 async function toggleTriggerEnabled(btn){
   const on=!btn.classList.contains('on');
-  if(on && !triggerSelected.size){ toast('РЎРЅР°С‡Р°Р»Р° РІС‹Р±РµСЂРёС‚Рµ С…РѕС‚СЏ Р±С‹ РѕРґРЅРѕ РїСЂРёР»РѕР¶РµРЅРёРµ РёР· СЃРїРёСЃРєР° РЅРёР¶Рµ'); return; }
+  if(on && !triggerSelected.size){ toast('Сначала выберите хотя бы одно приложение из списка ниже'); return; }
   if(on){
     const r=Vpn&&Vpn.hasUsageAccess?await Vpn.hasUsageAccess().catch(()=>null):null;
-    if(!r||!r.on){ toast('РЎРЅР°С‡Р°Р»Р° СЂР°Р·СЂРµС€РёС‚Рµ РґРѕСЃС‚СѓРї Рє СЃС‚Р°С‚РёСЃС‚РёРєРµ РёСЃРїРѕР»СЊР·РѕРІР°РЅРёСЏ'); return; }
-    try{ await Vpn.startAppWatcher(); btn.classList.add('on'); toast('РђРІС‚РѕРІРєР»СЋС‡РµРЅРёРµ Р·Р°РїСѓС‰РµРЅРѕ ('+triggerSelected.size+' РїСЂРёР».)'); }
-    catch(e){ toast('РќРµ СѓРґР°Р»РѕСЃСЊ Р·Р°РїСѓСЃС‚РёС‚СЊ: '+(e&&e.message?e.message:e)); }
+    if(!r||!r.on){ toast('Сначала разрешите доступ к статистике использования'); return; }
+    try{ await Vpn.startAppWatcher(); btn.classList.add('on'); toast('Автовключение запущено ('+triggerSelected.size+' прил.)'); }
+    catch(e){ toast('Не удалось запустить: '+(e&&e.message?e.message:e)); }
   }else{
     try{ await Vpn.stopAppWatcher(); }catch(e){}
     btn.classList.remove('on');
-    toast('РђРІС‚РѕРІРєР»СЋС‡РµРЅРёРµ РІС‹РєР»СЋС‡РµРЅРѕ');
+    toast('Автовключение выключено');
   }
 }
 
-// ---------- СЂР°Р·РґРµР»СЊРЅС‹Р№ С‚СѓРЅРЅРµР»СЊ РїРѕ РїСЂРёР»РѕР¶РµРЅРёСЏРј ----------
+// ---------- раздельный туннель по приложениям ----------
 let appsCache=null; // [{package,label}]
 const splitSelected=new Set(JSON.parse(localStorage.getItem('mise_splitApps')||'[]'));
 function splitMode(){ return localStorage.getItem('mise_splitMode')||'off'; }
 const SPLIT_HINTS={
-  off:'Р’РµСЃСЊ С‚СЂР°С„РёРє РёРґС‘С‚ С‡РµСЂРµР· VPN.',
-  bypass:'РћС‚РјРµС‡РµРЅРЅС‹Рµ РїСЂРёР»РѕР¶РµРЅРёСЏ РёРґСѓС‚ РњРРњРћ VPN (РЅР°РїСЂСЏРјСѓСЋ), РѕСЃС‚Р°Р»СЊРЅРѕРµ вЂ” С‡РµСЂРµР· VPN.',
-  only:'Р§РµСЂРµР· VPN РёРґСѓС‚ РўРћР›Р¬РљРћ РѕС‚РјРµС‡РµРЅРЅС‹Рµ РїСЂРёР»РѕР¶РµРЅРёСЏ, РѕСЃС‚Р°Р»СЊРЅРѕРµ вЂ” РЅР°РїСЂСЏРјСѓСЋ.'
+  off:'Весь трафик идёт через VPN.',
+  bypass:'Отмеченные приложения идут МИМО VPN (напрямую), остальное — через VPN.',
+  only:'Через VPN идут ТОЛЬКО отмеченные приложения, остальное — напрямую.'
 };
-function splitModeLabel(){ return {off:'Р’Р«РљР›',bypass:'РњРРњРћ VPN',only:'РўРћР›Р¬РљРћ VPN'}[splitMode()]||'Р’Р«РљР›'; }
-function refreshSplitSub(){ const el=document.getElementById('split-sub'); if(el) el.textContent='РџРћ РџР РР›РћР–Р•РќРРЇРњ В· '+splitModeLabel(); }
+function splitModeLabel(){ return {off:'ВЫКЛ',bypass:'МИМО VPN',only:'ТОЛЬКО VPN'}[splitMode()]||'ВЫКЛ'; }
+function refreshSplitSub(){ const el=document.getElementById('split-sub'); if(el) el.textContent='ПО ПРИЛОЖЕНИЯМ · '+splitModeLabel(); }
 function applySplitModeUi(){
   const m=splitMode();
   for(const k of ['off','bypass','only']) document.getElementById('split-'+k).classList.toggle('active',k===m);
@@ -1162,7 +1162,7 @@ function applySplitModeUi(){
 function setSplitMode(m){
   localStorage.setItem('mise_splitMode',m); applySplitModeUi();
   if(m!=='off' && !appsCache) loadAppList();
-  if(connected) toast('РџСЂРёРјРµРЅРёС‚СЃСЏ РїСЂРё СЃР»РµРґСѓСЋС‰РµРј РїРѕРґРєР»СЋС‡РµРЅРёРё');
+  if(connected) toast('Применится при следующем подключении');
 }
 async function openAppsScreen(){
   applySplitModeUi();
@@ -1170,8 +1170,8 @@ async function openAppsScreen(){
 }
 async function loadAppList(){
   const list=document.getElementById('app-list');
-  if(!Vpn || !Vpn.listApps){ list.innerHTML='<div class="list-note">РЎРїРёСЃРѕРє РїСЂРёР»РѕР¶РµРЅРёР№ РґРѕСЃС‚СѓРїРµРЅ С‚РѕР»СЊРєРѕ РІ РїСЂРёР»РѕР¶РµРЅРёРё РЅР° СѓСЃС‚СЂРѕР№СЃС‚РІРµ.</div>'; return; }
-  list.innerHTML='<div class="list-note">Р—Р°РіСЂСѓР·РєР° СЃРїРёСЃРєР° РїСЂРёР»РѕР¶РµРЅРёР№вЂ¦</div>';
+  if(!Vpn || !Vpn.listApps){ list.innerHTML='<div class="list-note">Список приложений доступен только в приложении на устройстве.</div>'; return; }
+  list.innerHTML='<div class="list-note">Загрузка списка приложений…</div>';
   try{
     const r=await Vpn.listApps();
     appsCache=(r&&r.apps?r.apps:[]).slice().sort((a,b)=>(a.label||'').localeCompare(b.label||'',undefined,{sensitivity:'base'}));
@@ -1181,39 +1181,39 @@ async function loadAppList(){
 function renderAppList(){
   const list=document.getElementById('app-list'); if(!list) return;
   if(!appsCache){ return; }
-  if(!appsCache.length){ list.innerHTML='<div class="list-note">РќРµ СѓРґР°Р»РѕСЃСЊ РїРѕР»СѓС‡РёС‚СЊ СЃРїРёСЃРѕРє РїСЂРёР»РѕР¶РµРЅРёР№.</div>'; return; }
+  if(!appsCache.length){ list.innerHTML='<div class="list-note">Не удалось получить список приложений.</div>'; return; }
   const q=(document.getElementById('apps-search').value||'').trim().toLowerCase();
-  // РІС‹Р±СЂР°РЅРЅС‹Рµ вЂ” РЅР°РІРµСЂС…, Р·Р°С‚РµРј РїРѕ Р°Р»С„Р°РІРёС‚Сѓ
+  // выбранные — наверх, затем по алфавиту
   const items=appsCache.filter(a=>!q || (a.label||'').toLowerCase().includes(q) || (a.package||'').toLowerCase().includes(q))
     .sort((a,b)=>{ const sa=splitSelected.has(a.package)?0:1, sb=splitSelected.has(b.package)?0:1; return sa-sb || (a.label||'').localeCompare(b.label||'',undefined,{sensitivity:'base'}); });
-  if(!items.length){ list.innerHTML='<div class="list-note">РќРёС‡РµРіРѕ РЅРµ РЅР°Р№РґРµРЅРѕ.</div>'; return; }
+  if(!items.length){ list.innerHTML='<div class="list-note">Ничего не найдено.</div>'; return; }
   list.innerHTML=items.map(a=>{
     const on=splitSelected.has(a.package);
     const mono=(a.label||a.package||'?').trim().charAt(0);
     return `<div class="app-row" onclick="toggleApp('${a.package.replace(/'/g,"\\'")}')">
       <div class="app-mono">${esc(mono)}</div>
       <div class="grow"><div class="t">${esc(a.label||a.package)}</div><div class="s">${esc(a.package)}</div></div>
-      <div class="chk${on?' on':''}">вњ“</div></div>`;
+      <div class="chk${on?' on':''}">✓</div></div>`;
   }).join('');
 }
 function toggleApp(pkg){
   if(splitSelected.has(pkg)) splitSelected.delete(pkg); else splitSelected.add(pkg);
   localStorage.setItem('mise_splitApps', JSON.stringify([...splitSelected]));
   renderAppList(); refreshSplitSub();
-  if(connected) toast('РџСЂРёРјРµРЅРёС‚СЃСЏ РїСЂРё СЃР»РµРґСѓСЋС‰РµРј РїРѕРґРєР»СЋС‡РµРЅРёРё');
+  if(connected) toast('Применится при следующем подключении');
 }
 
-// ---------- РїРѕРґРїРёСЃРєР°: URL / DNS TXT ----------
+// ---------- подписка: URL / DNS TXT ----------
 let subMode='url';
 function setSubMode(m){
   subMode=m;
   document.getElementById('seg-url').classList.toggle('active',m==='url');
   document.getElementById('seg-dns').classList.toggle('active',m==='dns');
   const hint=document.getElementById('sub-hint'), inp=document.getElementById('sub-input');
-  if(m==='dns'){ hint.textContent='Р”РѕРјРµРЅ СЃ TXT-Р·Р°РїРёСЃСЊСЋ (РѕР±С…РѕРґ Р±Р»РѕРєРёСЂРѕРІРєРё Р°РґСЂРµСЃР°)'; inp.placeholder='sub.example.com'; }
-  else { hint.textContent='РЎСЃС‹Р»РєР° РЅР° РєРѕРЅС„РёРі: mihomo YAML, Xray JSON РёР»Рё СЃРїРёСЃРѕРє СЃСЃС‹Р»РѕРє'; inp.placeholder='https://...'; }
+  if(m==='dns'){ hint.textContent='Домен с TXT-записью (обход блокировки адреса)'; inp.placeholder='sub.example.com'; }
+  else { hint.textContent='Ссылка на конфиг: mihomo YAML, Xray JSON или список ссылок'; inp.placeholder='https://...'; }
 }
-// СЂРµР·РѕР»РІ TXT С‡РµСЂРµР· DoH (Cloudflare в†’ Yandex, RU-РёРјРјСѓРЅРЅС‹Р№)
+// резолв TXT через DoH (Cloudflare → Yandex, RU-иммунный)
 async function resolveDnsTxt(domain){
   const providers=['https://cloudflare-dns.com/dns-query','https://common.dot.dns.yandex.net/dns-query','https://dns.google/resolve'];
   for(const base of providers){
@@ -1228,30 +1228,30 @@ async function resolveDnsTxt(domain){
 
 async function saveSubModal(){
   const raw=document.getElementById('sub-input').value.trim();
-  if(!raw){ toast('Р’РІРµРґРёС‚Рµ Р·РЅР°С‡РµРЅРёРµ'); return; }
+  if(!raw){ toast('Введите значение'); return; }
   let url=raw;
   if(subMode==='dns'){
-    toast('РџРѕР»СѓС‡Р°СЋ РєРѕРЅС„РёРі С‡РµСЂРµР· DNSвЂ¦');
+    toast('Получаю конфиг через DNS…');
     const txt=await resolveDnsTxt(raw);
-    if(!txt){ toast('DNS TXT РЅРµ РЅР°Р№РґРµРЅ РґР»СЏ '+raw); return; }
+    if(!txt){ toast('DNS TXT не найден для '+raw); return; }
     url=txt;
   }
   const list=subs();
   const dup=list.find(s=>s.url===url);
-  if(dup){ setActiveSub(dup.id); closeSubModal(); renderSubs(); toast('РЈР¶Рµ РґРѕР±Р°РІР»РµРЅР° вЂ” СЃРґРµР»Р°Р» Р°РєС‚РёРІРЅРѕР№'); go('servers'); return; }
+  if(dup){ setActiveSub(dup.id); closeSubModal(); renderSubs(); toast('Уже добавлена — сделал активной'); go('servers'); return; }
   const item={id:'s'+Date.now(), name:subName(url), url};
   list.push(item); saveSubs(list); setActiveSub(item.id);
-  closeSubModal(); renderSubs(); toast('РџРѕРґРїРёСЃРєР° РґРѕР±Р°РІР»РµРЅР°'); go('servers');
+  closeSubModal(); renderSubs(); toast('Подписка добавлена'); go('servers');
 }
 
-// ---------- С‚СЂР°С„РёРє (СЂРµР°Р»СЊРЅС‹Р№, РёР· API СЏРґСЂР°) ----------
-function fmtBytes(b){ if(b<1024) return b+' Р‘'; const u=['РљР‘','РњР‘','Р“Р‘','РўР‘']; let i=-1; do{ b/=1024; i++; }while(b>=1024&&i<u.length-1); return b.toFixed(b<10?1:0)+' '+u[i]; }
+// ---------- трафик (реальный, из API ядра) ----------
+function fmtBytes(b){ if(b<1024) return b+' Б'; const u=['КБ','МБ','ГБ','ТБ']; let i=-1; do{ b/=1024; i++; }while(b>=1024&&i<u.length-1); return b.toFixed(b<10?1:0)+' '+u[i]; }
 let trafTimer=null, totalUp=0, totalDown=0;
 function startTraffic(){
   if(trafTimer) return;
   trafTimer=setInterval(async()=>{
     if(!connected) return;
-    // /connections РѕС‚РґР°С‘С‚ РІРµСЃСЊ СЃРїРёСЃРѕРє СЃРѕРµРґРёРЅРµРЅРёР№ вЂ” РЅРµ РґС‘СЂРіР°РµРј РµРіРѕ, РїРѕРєР° СЌРєСЂР°РЅ РЅРµ РІРёРґРµРЅ
+    // /connections отдаёт весь список соединений — не дёргаем его, пока экран не виден
     if(document.hidden) return;
     const r=await core('GET','/connections');
     if(r.ok && r.data){
@@ -1260,9 +1260,9 @@ function startTraffic(){
     }
   }, batterySaverOn?9000:3000);
 }
-function stopTraffic(){ clearInterval(trafTimer); trafTimer=null; const el=document.getElementById('sess-data'); if(el) el.textContent='0 Р‘'; }
+function stopTraffic(){ clearInterval(trafTimer); trafTimer=null; const el=document.getElementById('sess-data'); if(el) el.textContent='0 Б'; }
 
-// ---------- С‚РµРјР° (СЃ СЃРѕС…СЂР°РЅРµРЅРёРµРј) ----------
+// ---------- тема (с сохранением) ----------
 function applyTheme(){ const t=localStorage.getItem('mise_theme'); document.documentElement.setAttribute('data-theme', t==='light'?'light':''); }
 function toggleTheme(){
   const cur=localStorage.getItem('mise_theme')==='light'?'':'light';
@@ -1284,9 +1284,9 @@ initTrigger();
 applyUaSub();
 renderSubs();
 setUiConnected(false);
-// СЃС‚Р°СЂС‚РѕРІР°СЏ РґРёР°РіРЅРѕСЃС‚РёРєР° РѕРєСЂСѓР¶РµРЅРёСЏ
-dbg('СЃС‚Р°СЂС‚ '+BUILD+' | Cap='+(!!Cap)+' platform='+platform+' native='+isNative+' plugin='+(!!Vpn)+' reg='+(!!(Cap&&Cap.registerPlugin)));
-const vs=document.getElementById('ver-sub'); if(vs) vs.textContent='MISETANIBOX В· '+BUILD.toUpperCase();
+// стартовая диагностика окружения
+dbg('старт '+BUILD+' | Cap='+(!!Cap)+' platform='+platform+' native='+isNative+' plugin='+(!!Vpn)+' reg='+(!!(Cap&&Cap.registerPlugin)));
+const vs=document.getElementById('ver-sub'); if(vs) vs.textContent='MISETANIBOX · '+BUILD.toUpperCase();
 </script>
 </body>
-                                         </html>
+</html>
