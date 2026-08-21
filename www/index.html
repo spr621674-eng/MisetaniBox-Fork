@@ -94,6 +94,14 @@ body{background:var(--bg);color:var(--fg);font-family:'Inter Tight',sans-serif;o
 .sub-btn{flex:1;padding:14px;border-radius:var(--rad);font-weight:600;font-size:14px;cursor:pointer;border:1px solid var(--ln);background:transparent;color:var(--fg)}
 .sub-btn.primary{background:var(--fg);color:var(--bg);border-color:var(--fg)}
 .list-note{padding:20px 24px;font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:.06em;color:var(--mut);line-height:1.7}
+.servers-banner{margin:0 24px 14px;padding:10px 12px;border-radius:var(--rad);font-family:'JetBrains Mono',monospace;font-size:10.5px;letter-spacing:.08em;display:flex;align-items:center;gap:9px;border:1px solid var(--ln)}
+.servers-banner.hidden{display:none}
+.servers-banner .dot{width:7px;height:7px;border-radius:50%;background:currentColor;flex:none}
+.servers-banner.updating{color:var(--mid);border-color:var(--mid)}
+.servers-banner.updating .dot{animation:banner-pulse 1s ease-in-out infinite}
+.servers-banner.updated{color:var(--ok);border-color:var(--ok)}
+.servers-banner.offline{color:var(--bad);border-color:var(--bad)}
+@keyframes banner-pulse{0%,100%{opacity:.25}50%{opacity:1}}
 .grp-row .t{font-weight:700}
 .node-row{padding-left:44px}
 .node-row .t{font-weight:500}
@@ -157,6 +165,7 @@ body{background:var(--bg);color:var(--fg);font-family:'Inter Tight',sans-serif;o
   <div class="view hidden" id="view-servers">
     <div class="sec-title">Серверы</div>
     <div class="sec-sub" id="servers-sub">НЕ ПОДКЛЮЧЕНО</div>
+    <div id="servers-banner" class="servers-banner hidden"></div>
     <div id="server-list"></div>
   </div>
 
@@ -409,7 +418,18 @@ function go(t){
   for(const v of document.querySelectorAll('.view')) v.classList.add('hidden');
   document.getElementById('view-'+t).classList.remove('hidden');
   for(const b of document.querySelectorAll('.nav button')) b.classList.toggle('active', b.dataset.tab===t);
-  if(t==='servers'){ connected ? loadProxies() : previewServers(); }
+  if(t==='servers'){
+    if(connected){
+      if(!_proxies){
+        const cachedNow=cachedServers();
+        if(cachedNow){ document.getElementById('servers-sub').textContent=cachedNow.all.length+' УЗЛОВ · ПРЕВЬЮ'; renderPreviewServers(cachedNow.all); }
+        showServersBanner('updating','Обновляю список серверов…');
+      }
+      loadProxies().then(()=>{ if(_proxies){ showServersBanner('updated','✓ Обновлено'); setTimeout(hideServersBanner,2000); } });
+    } else {
+      previewServers();
+    }
+  }
   if(t==='rules'){ applyPresetUi(); renderRules(); }
   if(t==='chains') renderChains();
   if(t==='apps') openAppsScreen();
@@ -550,8 +570,18 @@ function setUiConnected(on){
       document.getElementById('sess-time').textContent=String(Math.floor(s/60)).padStart(2,'0')+':'+String(s%60).padStart(2,'0');
     },1000); }
     startTraffic();
-    document.getElementById('servers-sub').textContent='ЗАГРУЗКА';
-    setServersNote('Ядро скачивает подписку…');
+    // Не оставляем экран серверов пустым на время подъёма ядра — если есть что
+    // показать из прошлого раза, показываем сразу, полоска сверху сообщит,
+    // что идёт обновление.
+    const cachedNow=cachedServers();
+    if(cachedNow){
+      document.getElementById('servers-sub').textContent=cachedNow.all.length+' УЗЛОВ · ПРЕВЬЮ';
+      renderPreviewServers(cachedNow.all);
+    }else{
+      document.getElementById('servers-sub').textContent='ЗАГРУЗКА';
+      setServersNote('Ядро скачивает подписку…');
+    }
+    showServersBanner('updating','Ядро скачивает актуальный список серверов…');
     waitForServers();
     setTimeout(applyModeToCore, 2500);
   }else{
@@ -590,7 +620,12 @@ if(Vpn && Vpn.addListener){
     dbg('событие: '+s.state+(s.message?' — '+s.message:''));
     if(s.state==='diag'){ dbg('ядро: '+String(s.message||'').trim().replace(/\n/g,' | ')); return; }
     if(s.state==='connected') setUiConnected(true);
-    else if(s.state==='cached'){ setUiConnected(true); toast('⚠ '+(s.message||'работаю на закэшированной подписке')); }
+    else if(s.state==='cached'){
+      setUiConnected(true);
+      toast('⚠ '+(s.message||'работаю на закэшированной подписке'));
+      const cn=cachedServers();
+      showServersBanner('offline', 'Подписка недоступна — данные от '+(cn?fmtTime(cn.ts):'неизвестно'));
+    }
     else if(s.state==='disconnected') setUiConnected(false);
     else if(s.state==='error'){ setUiConnected(false); toast('VPN: '+(s.message||'ошибка')); }
   });
@@ -607,6 +642,26 @@ function updateHomeServer(name, ping){
 }
 
 function setServersNote(txt){ document.getElementById('server-list').innerHTML='<div class="list-note">'+txt+'</div>'; }
+
+// ---------- полоска состояния над списком серверов ----------
+function showServersBanner(kind, text){
+  const b=document.getElementById('servers-banner'); if(!b) return;
+  b.className='servers-banner '+kind;
+  b.innerHTML='<span class="dot"></span><span>'+esc(text)+'</span>';
+}
+function hideServersBanner(){
+  const b=document.getElementById('servers-banner'); if(!b) return;
+  b.classList.add('hidden');
+}
+function fmtTime(ts){
+  const d=new Date(ts||Date.now());
+  return String(d.getHours()).padStart(2,'0')+':'+String(d.getMinutes()).padStart(2,'0');
+}
+function cachedServers(){
+  const c=safeJson(localStorage.getItem('mise_lastServers'));
+  return (c && Array.isArray(c.all) && c.all.length) ? c : null;
+}
+
 // ---------- классические группы-селекторы (как FlClash/mihomo) ----------
 let _proxies=null, expandedGroups={};
 function q(s){ return String(s).replace(/\\/g,'\\\\').replace(/'/g,"\\'"); }
@@ -669,6 +724,7 @@ function toggleGroup(n){ expandedGroups[n]=!expandedGroups[n]; renderProxies(); 
 // показать сохранённый список серверов, когда туннель выключен
 function renderCachedServers(){
   _proxies=null; expandedGroups={};
+  hideServersBanner();
   const sub=document.getElementById('servers-sub'), list=document.getElementById('server-list');
   sub.textContent='НЕ ПОДКЛЮЧЕНО';
   list.innerHTML='<div class="list-note">Подключитесь, чтобы увидеть группы-селекторы подписки и выбрать сервер в каждой.</div>';
@@ -718,11 +774,27 @@ function renderPreviewServers(names){
 async function previewServers(){
   const sub=getSubUrl();
   const subEl=document.getElementById('servers-sub'), list=document.getElementById('server-list');
-  if(!sub){ subEl.textContent='НЕТ ПОДПИСКИ'; list.innerHTML='<div class="list-note">Добавьте подписку на вкладке «Подписки».</div>'; return; }
-  if(!Vpn || !Vpn.fetchSub){ renderCachedServers(); return; }
-  subEl.textContent='ЗАГРУЗКА…'; list.innerHTML='<div class="list-note">Загружаю список серверов из подписки…</div>';
+  if(!sub){ hideServersBanner(); subEl.textContent='НЕТ ПОДПИСКИ'; list.innerHTML='<div class="list-note">Добавьте подписку на вкладке «Подписки».</div>'; return; }
+  const cached=cachedServers();
+  // Сразу показываем то, что уже знаем — не оставляем экран пустым на время
+  // сетевого запроса. Обновление идёт в фоне, полоска сверху покажет, что сейчас
+  // происходит: обновляется / обновилось / не вышло.
+  if(cached){
+    subEl.textContent=cached.all.length+' УЗЛОВ · ПРЕВЬЮ';
+    renderPreviewServers(cached.all);
+    showServersBanner('updating','Обновляю список серверов…');
+  }else{
+    subEl.textContent='ЗАГРУЗКА…'; list.innerHTML='<div class="list-note">Загружаю список серверов из подписки…</div>';
+    showServersBanner('updating','Загружаю список серверов…');
+  }
+  if(!Vpn || !Vpn.fetchSub){ if(!cached) renderCachedServers(); hideServersBanner(); return; }
   const r=await Vpn.fetchSub({url:sub, hwid:getHwid(), userAgent:getUserAgent()});
-  if(!r || r.status<200 || r.status>=300 || !r.body){ dbg('fetchSub status='+(r&&r.status)+' err='+((r&&r.error)||'')); renderCachedServers(); return; }
+  if(!r || r.status<200 || r.status>=300 || !r.body){
+    dbg('fetchSub status='+(r&&r.status)+' err='+((r&&r.error)||''));
+    if(cached){ showServersBanner('offline','Нет соединения — показаны данные от '+fmtTime(cached.ts)); }
+    else { renderCachedServers(); hideServersBanner(); }
+    return;
+  }
   // fetchSub отдаёт уже сконвертированный mihomo-YAML, каким бы ни был формат панели
   if(r.format){ dbg('формат подписки: '+r.format+' узлов='+(r.proxies||0)+' групп='+(r.groups||0)); localStorage.setItem('mise_subFormat', r.formatLabel||r.format); }
   if(r.notes) dbg('конвертер: '+String(r.notes).replace(/\n/g,' | '));
@@ -732,10 +804,16 @@ async function previewServers(){
   // Для сквозного mihomo-конфига их всё ещё приходится вытаскивать из YAML.
   const names=(r.names && r.names.length) ? r.names : parseSubNames(r.body);
   dbg('превью: '+names.length+' серверов из подписки');
-  if(!names.length){ subEl.textContent='—'; list.innerHTML='<div class="list-note">Не удалось разобрать список. '+esc(r.error||'Формат подписки не распознан.')+'</div>'; return; }
-  localStorage.setItem('mise_lastServers', JSON.stringify({all:names, now:getPreferred()}));
+  if(!names.length){
+    if(cached){ showServersBanner('offline','Не удалось обновить — показаны данные от '+fmtTime(cached.ts)); }
+    else{ subEl.textContent='—'; list.innerHTML='<div class="list-note">Не удалось разобрать список. '+esc(r.error||'Формат подписки не распознан.')+'</div>'; hideServersBanner(); }
+    return;
+  }
+  localStorage.setItem('mise_lastServers', JSON.stringify({all:names, now:getPreferred(), ts:Date.now()}));
   renderSubs();
   renderPreviewServers(names);
+  showServersBanner('updated','✓ Список серверов обновлён');
+  setTimeout(hideServersBanner, 2500);
 }
 // после коннекта ждём, пока ядро скачает подписку и поднимет API
 async function waitForServers(){
@@ -747,13 +825,20 @@ async function waitForServers(){
       if(g && g.all && g.all.length){
         const pref=getPreferred();
         if(pref && g.all.includes(pref) && pref!==g.now){ await core('PUT','/proxies/'+encodeURIComponent(GROUP),{name:pref}); }
-        loadProxies(); return;
+        loadProxies();
+        showServersBanner('updated','✓ Список серверов обновлён');
+        setTimeout(hideServersBanner, 2500);
+        return;
       }
       if(i===3){ core('PUT','/providers/proxies/main'); } // подтолкнуть обновление провайдера
     }
     loadProxies();
     await sleep(batterySaverOn?3000:1500);
   }
+  // не дождались за все попытки — не стираем то, что уже показано (превью/кэш),
+  // просто честно сообщаем, что свежих данных получить не удалось
+  const cached=cachedServers();
+  showServersBanner('offline', cached ? ('Не удалось обновить — показаны данные от '+fmtTime(cached.ts)) : 'Не удалось получить список серверов');
 }
 async function selectNode(group, name){
   const r=await core('PUT','/proxies/'+encodeURIComponent(group),{name});
