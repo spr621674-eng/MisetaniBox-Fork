@@ -103,6 +103,8 @@ body{background:var(--bg);color:var(--fg);font-family:'Inter Tight',sans-serif;o
 .sub-btn.primary{background:var(--fg);color:var(--bg);border-color:var(--fg)}
 .list-note{padding:20px 24px;font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:.06em;color:var(--mut);line-height:1.7}
 .servers-banner{margin:0 24px 14px;padding:10px 12px;border-radius:var(--rad);font-family:'JetBrains Mono',monospace;font-size:10.5px;letter-spacing:.08em;display:flex;align-items:center;gap:9px;border:1px solid var(--ln)}
+.update-banner{margin:14px 24px 0;padding:12px 14px;border-radius:var(--rad);border:1px solid var(--ok);color:var(--ok);display:flex;align-items:center;justify-content:space-between;cursor:pointer;font-family:'JetBrains Mono',monospace;font-size:10.5px;letter-spacing:.06em}
+.update-banner.hidden{display:none}
 .servers-banner.hidden{display:none}
 .servers-banner .dot{width:7px;height:7px;border-radius:50%;background:currentColor;flex:none}
 .servers-banner.updating{color:var(--mid);border-color:var(--mid)}
@@ -150,6 +152,9 @@ body{background:var(--bg);color:var(--fg);font-family:'Inter Tight',sans-serif;o
     <div class="status-blk">
       <div class="status-lbl">СТАТУС</div>
       <div class="status-val" id="status-val">○ ОТКЛЮЧЕНО</div>
+    </div>
+    <div id="update-banner" class="update-banner hidden" onclick="openUpdateModal()">
+      <span id="update-banner-version"></span><span class="chev">›</span>
     </div>
     <div class="connect" id="connect" onclick="toggleConnect()">
       <div class="connect-text" id="connect-text">
@@ -254,6 +259,10 @@ body{background:var(--bg);color:var(--fg);font-family:'Inter Tight',sans-serif;o
         <button class="sub-seg-btn" id="home-style-button" onclick="setHomeStyle('button')">Кнопка</button>
       </div>
     </div>
+
+    <div class="sec-title" style="font-size:22px;padding-top:22px">Обновления</div>
+    <div class="row" onclick="checkForUpdate(false)"><div class="grow"><div class="t">Проверить обновления</div><div class="s">СРАВНИТЬ С ПОСЛЕДНИМ РЕЛИЗОМ НА GITHUB</div></div><span class="chev">⟳</span></div>
+
     <div class="row" onclick="showAbout()"><div class="grow"><div class="t">О приложении</div><div class="s">ВЕРСИЯ · ЛИЦЕНЗИЯ · АВТОРЫ</div></div><span class="chev">›</span></div>
     <div class="list-note" id="about-note">Misetanibox · ядро mihomo (MetaCubeX). Android-версия — вклад @14Unight (плитка, виджет, автозапуск).</div>
   </div>
@@ -358,6 +367,18 @@ body{background:var(--bg);color:var(--fg);font-family:'Inter Tight',sans-serif;o
       <div class="sub-modal-btns">
         <button class="sub-btn ghost" onclick="closeChainModal()">Отмена</button>
         <button class="sub-btn primary" onclick="saveChain()">Создать</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="sub-modal hidden" id="update-modal" onclick="if(event.target===this)closeUpdateModal()">
+    <div class="sub-modal-card">
+      <div class="sub-modal-title">Доступно обновление <span id="update-modal-version"></span></div>
+      <div class="list-note" id="update-modal-notes" style="padding:12px 0 0;max-height:280px;overflow-y:auto;white-space:pre-wrap"></div>
+      <div class="sub-modal-hint" id="update-modal-status"></div>
+      <div class="sub-modal-btns">
+        <button class="sub-btn ghost" onclick="closeUpdateModal()">Позже</button>
+        <button class="sub-btn primary" id="update-download-btn" onclick="startUpdateDownload()">Скачать и установить</button>
       </div>
     </div>
   </div>
@@ -471,6 +492,8 @@ function closeInfoModal(){ document.getElementById('info-modal').classList.add('
 
 // ---------- Capacitor: нативный VPN-плагин ----------
 const BUILD = 'v0.19.0';
+// репозиторий форка на GitHub — отсюда проверяются обновления (Releases, не Actions-артефакты)
+const UPDATE_REPO = 'spr621674-eng/MisetaniBox-Fork';
 const Cap = window.Capacitor;
 const platform = (Cap && Cap.getPlatform) ? Cap.getPlatform() : 'web';
 const isNative = !!(Cap && Cap.isNativePlatform ? Cap.isNativePlatform() : (platform && platform!=='web'));
@@ -1103,6 +1126,95 @@ function setHomeStyle(s){
   applyHomeStyleUi();
 }
 
+// ---------- обновления через релизы GitHub ----------
+let latestUpdate=null;
+function currentVersion(){ return BUILD.replace(/^v/i,''); }
+// сравнение вида "1.2.10" > "1.2.9" по числам, а не по алфавиту (иначе "1.2.10" < "1.2.9")
+function isNewerVersion(a,b){
+  const pa=String(a).split('.').map(n=>parseInt(n,10)||0);
+  const pb=String(b).split('.').map(n=>parseInt(n,10)||0);
+  for(let i=0;i<Math.max(pa.length,pb.length);i++){
+    const x=pa[i]||0, y=pb[i]||0;
+    if(x>y) return true;
+    if(x<y) return false;
+  }
+  return false;
+}
+async function checkForUpdate(silent){
+  const repo=UPDATE_REPO;
+  if(!Vpn||!Vpn.checkLatestRelease){ if(!silent) toast('Доступно только в приложении на устройстве'); return; }
+  try{
+    const r=await Vpn.checkLatestRelease({repo});
+    if(!r || r.status<200 || r.status>=300){
+      if(!silent) toast('Не удалось проверить обновление'+(r&&r.status?' ('+r.status+')':''));
+      return;
+    }
+    const j=safeJson(r.body);
+    if(!j){ if(!silent) toast('Некорректный ответ GitHub'); return; }
+    const tag=(j.tag_name||'').replace(/^v/i,'');
+    const asset=(j.assets||[]).find(a=>/\.apk$/i.test(a.name||''));
+    if(!tag||!asset){ if(!silent) toast('В последнем релизе нет APK-файла'); return; }
+    if(isNewerVersion(tag, currentVersion())){
+      latestUpdate={ version:tag, url:asset.browser_download_url, notes:j.body||'Без описания изменений.', name:asset.name };
+      showUpdateBanner();
+      if(!silent) toast('Доступна версия '+tag);
+    }else{
+      hideUpdateBanner();
+      if(!silent) toast('У вас установлена последняя версия');
+    }
+  }catch(e){ if(!silent) toast('Ошибка проверки обновления: '+e); }
+}
+function showUpdateBanner(){
+  const b=document.getElementById('update-banner'); if(!b||!latestUpdate) return;
+  document.getElementById('update-banner-version').textContent='Доступно обновление · v'+latestUpdate.version;
+  b.classList.remove('hidden');
+}
+function hideUpdateBanner(){ const b=document.getElementById('update-banner'); if(b) b.classList.add('hidden'); }
+function openUpdateModal(){
+  if(!latestUpdate) return;
+  document.getElementById('update-modal-version').textContent='v'+latestUpdate.version;
+  document.getElementById('update-modal-notes').textContent=latestUpdate.notes;
+  document.getElementById('update-modal-status').textContent='';
+  const btn=document.getElementById('update-download-btn');
+  btn.disabled=false; btn.textContent='Скачать и установить';
+  document.getElementById('update-modal').classList.remove('hidden');
+}
+function closeUpdateModal(){ document.getElementById('update-modal').classList.add('hidden'); }
+async function startUpdateDownload(){
+  if(!latestUpdate) return;
+  if(!Vpn||!Vpn.downloadUpdate){ toast('Доступно только в приложении на устройстве'); return; }
+  const btn=document.getElementById('update-download-btn');
+  const status=document.getElementById('update-modal-status');
+  btn.disabled=true;
+  try{
+    if(Vpn.canInstallUnknownApps){
+      const c=await Vpn.canInstallUnknownApps();
+      if(!(c&&c.on)){
+        status.textContent='Нужно разрешить установку из неизвестных источников — открываю настройки…';
+        if(Vpn.requestInstallUnknownApps) await Vpn.requestInstallUnknownApps();
+        btn.disabled=false;
+        return;
+      }
+    }
+    btn.textContent='Скачивание… 0%';
+    status.textContent='';
+    const r=await Vpn.downloadUpdate({url:latestUpdate.url});
+    btn.textContent='Открываю установщик…';
+    await Vpn.installUpdate({path:r.path});
+    closeUpdateModal();
+  }catch(e){
+    toast('Не удалось скачать обновление: '+(e&&e.message?e.message:e));
+    btn.disabled=false; btn.textContent='Скачать и установить';
+  }
+}
+if(Vpn && Vpn.addListener){
+  Vpn.addListener('updateProgress', (e)=>{
+    const btn=document.getElementById('update-download-btn');
+    if(btn && btn.disabled) btn.textContent='Скачивание… '+(e.percent||0)+'%';
+  });
+}
+
+
 // ---------- автозапуск (нативный prefs) ----------
 async function initAutostart(){
   const b=document.getElementById('tgl-autostart'); if(!b||!Vpn||!Vpn.getAutostart) return;
@@ -1404,6 +1516,7 @@ applyTheme();
 applyAccent();
 renderAccents();
 applyHomeStyleUi();
+checkForUpdate(true);
 applyPresetUi();
 refreshChainsSub();
 applyModeLabel();
