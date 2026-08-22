@@ -44,6 +44,14 @@ body{background:var(--bg);color:var(--fg);font-family:'Inter Tight',sans-serif;o
 .connect{margin-top:26px;border-top:1px solid var(--fg);border-bottom:1px solid var(--fg);padding:24px;cursor:pointer;user-select:none}
 .connect .big{font-weight:700;font-size:72px;line-height:.95;letter-spacing:-.02em}
 .connect .sub{display:flex;justify-content:space-between;align-items:center;margin-top:16px;font-family:'JetBrains Mono',monospace;font-size:9px;letter-spacing:.16em;color:var(--mut)}
+.connect-button{display:none}
+.home-style-button .connect-text{display:none}
+.home-style-button .connect-button{display:flex;flex-direction:column;align-items:center;gap:18px;padding:10px 0 4px}
+.power-btn{width:108px;height:108px;border:1px solid var(--ln);border-radius:var(--rad);display:flex;align-items:center;justify-content:center;transition:border-color .25s,box-shadow .25s}
+.power-glyph{font-size:46px;line-height:1;color:var(--dim);transition:color .25s}
+.connect.on .power-btn{border-color:var(--ok);box-shadow:0 0 0 1px var(--ok) inset,0 0 26px -5px var(--ok)}
+.connect.on .power-glyph{color:var(--ok)}
+.power-label{font-weight:700;font-size:16px;letter-spacing:.05em}
 .server-blk{padding:22px 24px 0;display:flex;align-items:center;justify-content:space-between}
 .server-blk .l{display:flex;align-items:center;gap:12px}
 .server-blk .flag{width:26px;height:19px;border-radius:2px;border:1px solid var(--ln);object-fit:cover;background:var(--ln)}
@@ -144,7 +152,13 @@ body{background:var(--bg);color:var(--fg);font-family:'Inter Tight',sans-serif;o
       <div class="status-val" id="status-val">○ ОТКЛЮЧЕНО</div>
     </div>
     <div class="connect" id="connect" onclick="toggleConnect()">
-      <div class="big" id="connect-big">ПОДКЛЮ-<br>ЧИТЬСЯ</div>
+      <div class="connect-text" id="connect-text">
+        <div class="big" id="connect-big">ПОДКЛЮ-<br>ЧИТЬСЯ</div>
+      </div>
+      <div class="connect-button" id="connect-button">
+        <div class="power-btn"><span class="power-glyph" id="power-glyph">◇</span></div>
+        <div class="power-label" id="power-label">ПОДКЛЮЧИТЬСЯ</div>
+      </div>
       <div class="sub"><span>ТАП — ЗАПУСК ТУННЕЛЯ</span><span id="mode-lbl" onclick="event.stopPropagation();cycleMode()">ПРАВИЛА</span></div>
     </div>
     <div id="dbg" class="dbg" onclick="copyDbg()"></div>
@@ -216,6 +230,9 @@ body{background:var(--bg);color:var(--fg);font-family:'Inter Tight',sans-serif;o
     <div class="row"><div class="grow"><div class="t">Режим TUN</div><div class="s">ПОЛНЫЙ ПЕРЕХВАТ ТРАФИКА</div></div><button class="toggle on" onclick="this.classList.toggle('on')"></button></div>
     <div class="row" onclick="go('apps')"><div class="grow"><div class="t">Раздельный туннель</div><div class="s" id="split-sub">ПО ПРИЛОЖЕНИЯМ · ВЫКЛ</div></div><span class="chev">›</span></div>
     <div class="row" onclick="go('chains')"><div class="grow"><div class="t">Цепочки</div><div class="s" id="chains-sub">НЕТ ЦЕПОЧЕК</div></div><span class="chev">›</span></div>
+
+    <div class="sec-title" style="font-size:22px;padding-top:22px">Автономность</div>
+    <div class="sec-sub">РАБОТАЕТ САМО, БЕЗ УЧАСТИЯ ПОЛЬЗОВАТЕЛЯ</div>
     <div class="row"><div class="grow"><div class="t">Автозапуск</div><div class="s">ПОДНЯТЬ ТУННЕЛЬ ПРИ ВКЛЮЧЕНИИ УСТРОЙСТВА</div></div><button class="toggle" id="tgl-autostart" onclick="toggleAutostart(this)"></button></div>
     <div class="row"><div class="grow"><div class="t">Отключать при блокировке</div><div class="s">РАЗРЫВАТЬ ПРИ БЛОКИРОВКЕ ЭКРАНА</div></div><button class="toggle" id="tgl-lock-disconnect" onclick="toggleLockDisconnect(this)"></button></div>
     <div class="row"><div class="grow"><div class="t">Подключать при разблокировке</div><div class="s">АВТОМАТИЧЕСКИ ПЕРЕПОДКЛЮЧАТЬСЯ ПОСЛЕ РАЗБЛОКИРОВКИ</div></div><button class="toggle" id="tgl-lock-reconnect" onclick="toggleLockReconnect(this)"></button></div>
@@ -223,10 +240,19 @@ body{background:var(--bg);color:var(--fg);font-family:'Inter Tight',sans-serif;o
     <div class="row"><div class="grow"><div class="t">Экономичный режим<i class="info-i" onclick="event.stopPropagation();showInfo('Экономичный режим','Приложение реже опрашивает ядро о трафике и списке серверов, пока экран открыт — это снижает нагрузку на процессор и число фоновых будильников. Скорость и стабильность самого VPN-соединения не меняются, экономия только на служебных проверках интерфейса.')">ⓘ</i></div><div class="s">РЕЖЕ ОБНОВЛЯЕТ ИНТЕРФЕЙС — МЕНЬШЕ РАСХОД БАТАРЕИ</div></div><button class="toggle" id="tgl-battery-saver" onclick="toggleBatterySaver(this)"></button></div>
     <div class="row" onclick="go('trigger')"><div class="grow"><div class="t">Автовключение по приложению<i class="info-i" onclick="event.stopPropagation();showInfo('Автовключение по приложению','Выберите приложение — VPN включится сам, когда вы его откроете, и выключится, когда вы из него выйдете (если вы не включали VPN вручную сами до этого). Работает через отдельное фоновое наблюдение за экраном, поэтому в шторке появится второе уведомление — так требует Android для любого фонового процесса, убрать его нельзя.')">ⓘ</i></div><div class="s" id="trigger-sub">ВЫКЛЮЧЕНО</div></div><span class="chev">›</span></div>
     <div class="list-note" style="padding:10px 4px 0">Плитка в шторке и виджет на рабочем столе включают VPN одним тапом — добавь их через системное меню.</div>
+
+    <div class="sec-title" style="font-size:22px;padding-top:22px">Внешний вид</div>
     <div class="row"><div class="grow"><div class="t">Тема</div><div class="s">ТЁМНАЯ / СВЕТЛАЯ</div></div><span class="chev" onclick="toggleTheme()">◐</span></div>
     <div class="row" style="display:block">
       <div class="grow" style="margin-bottom:12px"><div class="t">Оформление</div><div class="s">ЦВЕТ АКЦЕНТА</div></div>
       <div class="accent-row" id="accent-row"></div>
+    </div>
+    <div class="row" style="display:block">
+      <div class="grow" style="margin-bottom:12px"><div class="t">Главный экран</div><div class="s">КАК ВЫГЛЯДИТ КНОПКА ПОДКЛЮЧЕНИЯ</div></div>
+      <div class="sub-seg">
+        <button class="sub-seg-btn" id="home-style-text" onclick="setHomeStyle('text')">Текст</button>
+        <button class="sub-seg-btn" id="home-style-button" onclick="setHomeStyle('button')">Кнопка</button>
+      </div>
     </div>
     <div class="row" onclick="showAbout()"><div class="grow"><div class="t">О приложении</div><div class="s">ВЕРСИЯ · ЛИЦЕНЗИЯ · АВТОРЫ</div></div><span class="chev">›</span></div>
     <div class="list-note" id="about-note">Misetanibox · ядро mihomo (MetaCubeX). Android-версия — вклад @14Unight (плитка, виджет, автозапуск).</div>
@@ -563,8 +589,13 @@ function setUiConnected(on){
   setFace(on);
   const big=document.getElementById('connect-big');
   const sv=document.getElementById('status-val');
+  const connectEl=document.getElementById('connect');
+  const glyph=document.getElementById('power-glyph');
+  const label=document.getElementById('power-label');
+  connectEl.classList.toggle('on', on);
   if(on){
     big.innerHTML='ОТКЛЮ-<br>ЧИТЬСЯ'; sv.textContent='● ПОДКЛЮЧЕНО'; sv.style.color='var(--ok)';
+    if(glyph) glyph.textContent='◆'; if(label) label.textContent='ОТКЛЮЧИТЬСЯ';
     if(!sessTimer){ sessStart=Date.now(); sessTimer=setInterval(()=>{
       const s=Math.floor((Date.now()-sessStart)/1000);
       document.getElementById('sess-time').textContent=String(Math.floor(s/60)).padStart(2,'0')+':'+String(s%60).padStart(2,'0');
@@ -586,6 +617,7 @@ function setUiConnected(on){
     setTimeout(applyModeToCore, 2500);
   }else{
     big.innerHTML='ПОДКЛЮ-<br>ЧИТЬСЯ'; sv.textContent='○ ОТКЛЮЧЕНО'; sv.style.color='';
+    if(glyph) glyph.textContent='◇'; if(label) label.textContent='ПОДКЛЮЧИТЬСЯ';
     clearInterval(sessTimer); sessTimer=null; document.getElementById('sess-time').textContent='00:00';
     stopTraffic();
     updateHomeServer('', null);
@@ -1057,6 +1089,20 @@ function renderAccents(){
 }
 function setAccent(c){ localStorage.setItem('mise_accent', c); applyAccent(); renderAccents(); }
 
+// ---------- стиль главного экрана: текст или кнопка ----------
+function homeStyle(){ return localStorage.getItem('mise_home_style')||'text'; }
+function applyHomeStyleUi(){
+  const s=homeStyle();
+  const bText=document.getElementById('home-style-text'), bBtn=document.getElementById('home-style-button');
+  if(bText) bText.classList.toggle('active', s==='text');
+  if(bBtn) bBtn.classList.toggle('active', s==='button');
+  document.querySelector('.app').classList.toggle('home-style-button', s==='button');
+}
+function setHomeStyle(s){
+  localStorage.setItem('mise_home_style', s);
+  applyHomeStyleUi();
+}
+
 // ---------- автозапуск (нативный prefs) ----------
 async function initAutostart(){
   const b=document.getElementById('tgl-autostart'); if(!b||!Vpn||!Vpn.getAutostart) return;
@@ -1357,6 +1403,7 @@ function toggleTheme(){
 applyTheme();
 applyAccent();
 renderAccents();
+applyHomeStyleUi();
 applyPresetUi();
 refreshChainsSub();
 applyModeLabel();
