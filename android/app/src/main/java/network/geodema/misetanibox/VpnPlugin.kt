@@ -387,4 +387,136 @@ class VpnPlugin : Plugin() {
             }
         }.start()
     }
+
+    // ---------- обновления через релизы GitHub ----------
+    // Через нативный HTTP, а не WebView-fetch: у api.github.com CORS не всегда
+    // предсказуем на всех связках Android WebView, а GitHub требует свой
+    // User-Agent на КАЖДЫЙ запрос — без него отдаёт 403 всем подряд.
+    @PluginMethod
+    fun checkLatestRelease(call: PluginCall) {
+        val repo = call.getString("repo", "") ?: ""
+        if (repo.isBlank()) { call.reject("не указан репозиторий"); return }
+        Thread {
+            try {
+                val url = java.net.URL("https://api.github.com/repos/$repo/releases/latest")
+                val conn = url.openConnection() as java.net.HttpURLConnection
+                conn.setRequestProperty("Accept", "application/vnd.github+json")
+                conn.setRequestProperty("User-Agent", "Misetanibox-Updater")
+                conn.connectTimeout = 8000
+                conn.readTimeout = 12000
+                val code = conn.responseCode
+                val text = (if (code in 200..299) conn.inputStream else conn.errorStream)
+                    ?.bufferedReader()?.use { it.readText() } ?: ""
+                conn.disconnect()
+                val ret = JSObject()
+                ret.put("status", code)
+                ret.put("body", text)
+                call.resolve(ret)
+            } catch (e: Exception) {
+                val ret = JSObject()
+                ret.put("status", 0)
+                ret.put("body", "")
+                ret.put("error", e.message ?: "network error")
+                call.resolve(ret)
+            }
+        }.start()
+    }
+
+    // Качаем APK в кэш приложения (уже описан в file_paths.xml как cache-path
+    // "." — покрывает весь cacheDir) и по ходу отдаём проценты через
+    // notifyListeners, чтобы интерфейс мог показать прогресс.
+    @PluginMethod
+    fun downloadUpdate(call: PluginCall) {
+        val url = call.getString("url", "") ?: ""
+        if (url.isBlank()) { call.reject("нет ссылки на файл"); return }
+        Thread {
+            try {
+                val conn = java.net.URL(url).openConnection() as java.net.HttpURLConnection
+                conn.instanceFollowRedirects = true
+                conn.setRequestProperty("User-Agent", "Misetanibox-Updater")
+                conn.connectTimeout = 15000
+                conn.readTimeout = 30000
+                conn.connect()
+                val total = conn.contentLength
+                val dir = java.io.File(context.cacheDir, "updates").apply { mkdirs() }
+                val outFile = java.io.File(dir, "update.apk")
+                conn.inputStream.use { input ->
+                    outFile.outputStream().use { output ->
+                        val buf = ByteArray(8192)
+                        var downloaded = 0L
+                        var lastPct = -1
+                        while (true) {
+                            val read = input.read(buf)
+                            if (read == -1) break
+                            output.write(buf, 0, read)
+                            downloaded += read
+                            if (total > 0) {
+                                val pct = (downloaded * 100 / total).toInt()
+                                if (pct != lastPct) {
+                                    lastPct = pct
+                                    val ev = JSObject()
+                                    ev.put("percent", pct)
+                                    notifyListeners("updateProgress", ev)
+                                }
+                            }
+                        }
+                    }
+                }
+                val ret = JSObject()
+                ret.put("path", outFile.absolutePath)
+                call.resolve(ret)
+            } catch (e: Exception) {
+                call.reject(e.message ?: "ошибка скачивания")
+            }
+        }.start()
+    }
+
+    // Открывает системный установщик APK через FileProvider (тот же провайдер,
+    // что уже настроен в манифесте для других нужд).
+    @PluginMethod
+    fun installUpdate(call: PluginCall) {
+        val path = call.getString("path", "") ?: ""
+        val file = java.io.File(path)
+        if (!file.exists()) { call.reject("файл не найден"); return }
+        try {
+            val uri = androidx.core.content.FileProvider.getUriForFile(
+                context, "${context.packageName}.fileprovider", file
+            )
+            val intent = Intent(Intent.ACTION_VIEW)
+            intent.setDataAndType(uri, "application/vnd.android.package-archive")
+            intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_GRANT_READ_URI_PERMISSION)
+            context.startActivity(intent)
+            call.resolve()
+        } catch (e: Exception) {
+            call.reject(e.message ?: "не удалось запустить установку")
+        }
+    }
+
+    // На Android 8+ установка APK не из Play Store требует отдельного
+    // разрешения "Install unknown apps" — выдаётся только вручную, системный
+    // диалог с кнопкой "Разрешить" для него не существует.
+    @PluginMethod
+    fun canInstallUnknownApps(call: PluginCall) {
+        val ret = JSObject()
+        ret.put(
+            "on",
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) context.packageManager.canRequestPackageInstalls() else true
+        )
+        call.resolve(ret)
+    }
+
+    @PluginMethod
+    fun requestInstallUnknownApps(call: PluginCall) {
+        try {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                val i = Intent(android.provider.Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES)
+                i.data = android.net.Uri.parse("package:" + context.packageName)
+                i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                context.startActivity(i)
+            }
+            call.resolve()
+        } catch (e: Exception) {
+            call.reject(e.message ?: "не удалось открыть настройки")
+        }
+    }
 }
