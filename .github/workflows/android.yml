@@ -86,21 +86,15 @@ jobs:
           cp node_modules/@capacitor/core/dist/capacitor.js www/capacitor.js
           sed -i "s/const BUILD = 'v[^']*';/const BUILD = 'v${{ steps.ver.outputs.version }}';/" www/index.html
           npx cap sync android
-      - name: Generate signing keystore
+      - name: Decode signing keystore
         run: |
-          keytool -genkeypair -v \
-            -keystore "$RUNNER_TEMP/misetanibox-release.p12" \
-            -storetype PKCS12 \
-            -alias misetanibox \
-            -keyalg RSA -keysize 2048 -validity 10000 \
-            -storepass misetanibox123 -keypass misetanibox123 \
-            -dname "CN=Misetanibox, OU=Personal, O=Personal, L=Unknown, S=Unknown, C=RU"
+          echo "${{ secrets.ANDROID_KEYSTORE_BASE64 }}" | base64 -d > "$RUNNER_TEMP/misetanibox-release.p12"
       - name: Build release APK (signed)
         working-directory: android
         env:
           ANDROID_KEYSTORE_FILE: ${{ runner.temp }}/misetanibox-release.p12
-          ANDROID_KEYSTORE_PASSWORD: misetanibox123
-          ANDROID_KEY_ALIAS: misetanibox
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
         run: |
           chmod +x ./gradlew
           ./gradlew assembleRelease --no-daemon \
