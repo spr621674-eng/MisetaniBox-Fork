@@ -1,6 +1,5 @@
 apply plugin: 'com.android.application'
 apply plugin: 'kotlin-android'
-
 android {
     namespace "network.geodema.misetanibox"
     compileSdk rootProject.ext.compileSdkVersion
@@ -8,8 +7,13 @@ android {
         applicationId "network.geodema.misetanibox.fork"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
-        versionCode 1
-        versionName "1.0"
+
+        // Версия приходит снаружи (из workflow_dispatch input + номера запуска Actions),
+        // через -PappVersionName= и -PappVersionCode= при вызове gradlew.
+        // Локальная сборка (без этих флагов) — безопасные дефолты, ничего не ломается.
+        versionCode (project.hasProperty('appVersionCode') ? appVersionCode.toInteger() : 1)
+        versionName (project.hasProperty('appVersionName') ? appVersionName : "0.0.0-dev")
+
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         aaptOptions {
              // Files and dirs to omit from the packaged assets dir, modified to accommodate modern web apps.
@@ -42,13 +46,11 @@ android {
         }
     }
 }
-
 repositories {
     flatDir{
         dirs '../capacitor-cordova-android-plugins/src/main/libs', 'libs'
     }
 }
-
 dependencies {
     implementation fileTree(include: ['*.jar'], dir: 'libs')
     implementation "androidx.appcompat:appcompat:$androidxAppCompatVersion"
@@ -63,9 +65,7 @@ dependencies {
     androidTestImplementation "androidx.test.espresso:espresso-core:$androidxEspressoCoreVersion"
     implementation project(':capacitor-cordova-android-plugins')
 }
-
 apply from: 'capacitor.build.gradle'
-
 try {
     def servicesJSON = file('google-services.json')
     if (servicesJSON.text) {
