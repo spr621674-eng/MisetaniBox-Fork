@@ -251,12 +251,17 @@ class VpnPlugin : Plugin() {
         }
         val i = Intent(context, AppWatcherService::class.java)
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) context.startForegroundService(i) else context.startService(i)
+        // Персистентный флаг — без него BootReceiver не может узнать после
+        // перезагрузки телефона, нужно ли поднимать AppWatcherService заново,
+        // потому что сам сервис к тому моменту уже мёртв.
+        VpnPrefs.setAppWatcherEnabled(context, true)
         call.resolve()
     }
 
     @PluginMethod
     fun stopAppWatcher(call: PluginCall) {
         context.stopService(Intent(context, AppWatcherService::class.java))
+        VpnPrefs.setAppWatcherEnabled(context, false)
         call.resolve()
     }
 
