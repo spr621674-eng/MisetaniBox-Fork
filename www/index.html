@@ -853,6 +853,10 @@ function parseSubNames(text){ const v=parseV2rayNames(text); return v.length?v:p
 function getPreferred(){ return localStorage.getItem('mise_preferred'); }
 function preSelect(name){
   localStorage.setItem('mise_preferred', name); toast('Сервер по умолчанию: '+cleanName(name));
+  // Синхронизация с нативной стороной — иначе автовключение по приложению, плитка и
+  // автозапуск после перезагрузки (где WebView не открыт) не узнают о выборе и
+  // подключатся через дефолтный узел ядра вместо выбранного.
+  if(Vpn && Vpn.setPreferredServer){ Vpn.setPreferredServer({name}).catch(()=>{}); }
   const c=safeJson(localStorage.getItem('mise_lastServers')); if(c&&c.all) renderPreviewServers(c.all);
 }
 function renderPreviewServers(names){
@@ -1578,6 +1582,9 @@ initBatterySaver();
 initTrigger();
 applyUaSub();
 renderSubs();
+// одноразовая синхронизация уже выбранного сервера по умолчанию в нативные prefs —
+// для тех, кто выбрал его ещё до появления нативного переприменения (см. preSelect)
+if(Vpn && Vpn.setPreferredServer && getPreferred()){ Vpn.setPreferredServer({name:getPreferred()}).catch(()=>{}); }
 setUiConnected(false);
 // стартовая диагностика окружения
 dbg('старт '+BUILD+' | Cap='+(!!Cap)+' platform='+platform+' native='+isNative+' plugin='+(!!Vpn)+' reg='+(!!(Cap&&Cap.registerPlugin)));
