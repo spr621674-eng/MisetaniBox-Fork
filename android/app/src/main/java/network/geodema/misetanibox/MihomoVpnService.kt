@@ -234,17 +234,76 @@ class MihomoVpnService : VpnService() {
             isRunning = true
             updateNotif(connected = true)
             broadcast("connected", "")
-
-            worker.execute {
-                try {
-                    Thread.sleep(6000)
-                    if (running) broadcast("diag", Mobilecore.diagnose())
-                } catch (_: Exception) {}
-            }
+            applyPreferredServer()
+            scheduleDiagBroadcast()
         } catch (e: Exception) {
             broadcast("error", e.message ?: "неизвестная ошибка запуска")
             stopTunnel()
         }
+    }
+
+    // Раньше диагностика запускалась через worker.execute{...} — тот же однопоточный
+    // executor, на котором стоят в очереди start/stop/pause/resume. Пока эта задача
+    // 6 секунд «спала», любая команда подключения/отключения, случившаяся в этом окне,
+    // ждала своей очереди — то самое ощущение «стало долго подключаться/отключаться».
+    // Отдельный поток не конкурирует с очередью воркера ни за что.
+    private fun scheduleDiagBroadcast() {
+        Thread {
+            try {
+                Thread.sleep(6000)
+                if (running) broadcast("diag", Mobilecore.diagnose())
+            } catch (_: Exception) {}
+        }.start()
+    }
+
+    // Раньше «сервер по умолчанию» переприменялся ТОЛЬКО из открытого WebView — при
+    // автовключении по приложению, плитке или автозапуске после перезагрузки интерфейс
+    // не открыт, и ядро молча оставалось на своём дефолтном узле группы PROXY вместо
+    // реально выбранного пользователем. Тоже на отдельном потоке — не мешает очереди
+    // воркера и не блокирует последующие команды.
+    private fun applyPreferredServer() {
+        Thread {
+            try {
+                var proxiesJson: org.json.JSONObject? = null
+                // локальному API ядра нужно время подняться сразу после Mobilecore.start()
+                for (i in 0 until 15) {
+                    if (!running) return@Thread
+                    try {
+                        val u = java.net.URL("http://127.0.0.1:9090/proxies")
+                        val c = u.openConnection() as java.net.HttpURLConnection
+                        c.connectTimeout = 1500
+                        c.readTimeout = 2000
+                        if (c.responseCode in 200..299) {
+                            proxiesJson = org.json.JSONObject(c.inputStream.bufferedReader().use { it.readText() })
+                            c.disconnect()
+                            break
+                        }
+                        c.disconnect()
+                    } catch (_: Exception) {}
+                    Thread.sleep(1000)
+                }
+                val pref = VpnPrefs.preferredServer(this)
+                val group = proxiesJson?.optJSONObject("proxies")?.optJSONObject("PROXY")
+                val all = group?.optJSONArray("all")
+                if (!pref.isNullOrBlank() && all != null) {
+                    var has = false
+                    for (i in 0 until all.length()) if (all.optString(i) == pref) { has = true; break }
+                    if (has && group.optString("now") != pref) {
+                        try {
+                            val u = java.net.URL("http://127.0.0.1:9090/proxies/PROXY")
+                            val c = u.openConnection() as java.net.HttpURLConnection
+                            c.requestMethod = "PUT"
+                            c.doOutput = true
+                            c.connectTimeout = 2000
+                            c.readTimeout = 3000
+                            c.outputStream.use { it.write("{\"name\":${org.json.JSONObject.quote(pref)}}".toByteArray()) }
+                            c.responseCode
+                            c.disconnect()
+                        } catch (_: Exception) {}
+                    }
+                }
+            } catch (_: Exception) {}
+        }.start()
     }
 
     private fun applySplitTunnel(builder: Builder, mode: String, apps: Array<String>) {
@@ -302,6 +361,13 @@ class MihomoVpnService : VpnService() {
             isRunning = false
             pausedByLock = false
             lastParams = null
+            // Любая ОСОЗНАННАЯ остановка (вручную из UI/плитки/виджета, ошибка, отзыв
+            // разрешения) должна сбрасывать «это включил watcher» — иначе следующее
+            // РУЧНОЕ подключение внутри того же приложения-триггера будет ошибочно
+            // считаться сессией watcher'а и погашено само при выходе из приложения.
+            // pauseTunnel() (пауза по блокировке экрана) сюда не входит и не должна —
+            // это временное состояние, а не осознанная остановка.
+            VpnPrefs.setVpnStartedByWatcher(this, false)
             broadcast("disconnected", "")
             unregisterScreenReceiver()
             stopForeground(STOP_FOREGROUND_REMOVE)

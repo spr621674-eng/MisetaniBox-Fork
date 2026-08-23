@@ -38,7 +38,10 @@ class VpnPlugin : Plugin() {
                 notifyListeners("vpnState", ret)
             }
         }
-        if (Build.VERSION.SDK_INT >= 34) {
+        // RECEIVER_NOT_EXPORTED появился в API 33 (Tiramisu), а не 34 — раньше проверка на
+        // >= 34 оставляла Android 13 без этого флага без всякой причины: ресивер регистрировался
+        // как экспортированный на устройстве, где уже год как есть способ этого не делать.
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             context.registerReceiver(receiver, filter, Context.RECEIVER_NOT_EXPORTED)
         } else {
             @Suppress("UnspecifiedRegisterReceiverFlag")
@@ -210,6 +213,14 @@ class VpnPlugin : Plugin() {
             arr?.optString(i)?.let { if (it.isNotBlank()) list.add(it) }
         }
         VpnPrefs.setAppTriggerPackages(context, list)
+        // Пустой список делает наблюдение бессмысленным — если сервис в этот момент уже
+        // включён, он продолжал бы опрашивать передний план раз в секунду вхолостую
+        // (и подниматься заново после каждой перезагрузки через BootReceiver), пока
+        // пользователь сам не зайдёт в настройки и не выключит тумблер. Гасим сами.
+        if (list.isEmpty() && VpnPrefs.isAppWatcherEnabled(context)) {
+            context.stopService(Intent(context, AppWatcherService::class.java))
+            VpnPrefs.setAppWatcherEnabled(context, false)
+        }
         call.resolve()
     }
 
@@ -268,6 +279,21 @@ class VpnPlugin : Plugin() {
     @PluginMethod
     fun isAppWatcherRunning(call: PluginCall) {
         call.resolve(JSObject().put("on", AppWatcherService.isRunning))
+    }
+
+    // Сервер по умолчанию (группа PROXY) — раньше применялся только из открытого
+    // интерфейса; теперь дублируется сюда, чтобы автовключение/плитка/автозапуск
+    // после перезагрузки тоже подключались через реально выбранный пользователем узел,
+    // а не через дефолтный узел группы.
+    @PluginMethod
+    fun setPreferredServer(call: PluginCall) {
+        VpnPrefs.setPreferredServer(context, call.getString("name"))
+        call.resolve()
+    }
+
+    @PluginMethod
+    fun getPreferredServer(call: PluginCall) {
+        call.resolve(JSObject().put("name", VpnPrefs.preferredServer(context) ?: ""))
     }
 
     @PluginMethod

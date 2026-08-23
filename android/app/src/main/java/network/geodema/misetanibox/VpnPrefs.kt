@@ -39,27 +39,37 @@ object VpnPrefs {
     const val KEY_APP_TRIGGER_PKGS = "app_trigger_pkgs"
     /** Экономичный режим: реже опрашивает ядро, меньше будит систему */
     const val KEY_BATTERY_SAVER = "battery_saver"
-    /** Явный флаг «пользователь включил автовключение по приложению» — раньше
-     * это читалось только по факту «жив ли AppWatcherService», а после
-     * перезагрузки телефона сервис уже мёртв, и BootReceiver не мог понять,
-     * поднимать его снова или нет. */
+    /**
+     * Включена ли функция «Автовключение по приложению» (тумблер, а не список приложений).
+     * Раньше это состояние жило только в памяти как AppWatcherService.isRunning — после
+     * перезагрузки устройства ничто не поднимало сервис заново, хотя список приложений
+     * и сам факт «функция была включена» в prefs сохранялись. BootReceiver читает этот
+     * ключ, чтобы восстановить сервис вместе с обычным автозапуском VPN.
+     */
     const val KEY_APP_WATCHER_ENABLED = "app_watcher_enabled"
-    /** Флаг «это VPN включил сам наблюдатель, а не пользователь вручную» —
-     * раньше жил только в памяти AppWatcherService (private var) и сбрасывался
-     * в false, если систему прибивала и перезапускала just этот сервис
-     * (START_STICKY), а VPN при этом продолжал работать. Из-за этого
-     * «выключить при выходе из приложения» переставало срабатывать после
-     * любого убийства сервиса системой. */
-    const val KEY_VPN_STARTED_BY_WATCHER = "vpn_started_by_watcher"
+    /**
+     * Watcher сам включил текущую VPN-сессию (а не пользователь вручную) — раньше это
+     * жило только в памяти AppWatcherService (vpnWasStartedByWatcher). Сервис START_STICKY,
+     * система может убить и перезапустить его под давлением памяти — при перезапуске флаг
+     * терялся, хотя VPN, включённый watcher'ом, продолжал работать, и «выключить при выходе
+     * из приложения» переставало срабатывать. Теперь переживает перезапуск сервиса.
+     */
+    const val KEY_WATCHER_STARTED_VPN = "watcher_started_vpn"
 
-    fun isAppWatcherEnabled(ctx: Context): Boolean = prefs(ctx).getBoolean(KEY_APP_WATCHER_ENABLED, false)
-    fun setAppWatcherEnabled(ctx: Context, on: Boolean) {
-        prefs(ctx).edit().putBoolean(KEY_APP_WATCHER_ENABLED, on).apply()
+    /**
+     * Выбранный пользователем «сервер по умолчанию» внутри основной группы (PROXY).
+     * Раньше применялся ТОЛЬКО из открытого WebView (JS дёргал /proxies PUT после
+     * подключения) — при автовключении по приложению, плитке или автозапуске после
+     * перезагрузки интерфейс не открывается, и ядро оставалось на своём дефолтном
+     * узле группы вместо реально выбранного — сайты грузились заметно медленнее.
+     */
+    const val KEY_PREFERRED_SERVER = "preferred_server"
+    fun preferredServer(ctx: Context): String? {
+        val v = prefs(ctx).getString(KEY_PREFERRED_SERVER, null)
+        return if (v.isNullOrBlank()) null else v
     }
-
-    fun isVpnStartedByWatcher(ctx: Context): Boolean = prefs(ctx).getBoolean(KEY_VPN_STARTED_BY_WATCHER, false)
-    fun setVpnStartedByWatcher(ctx: Context, on: Boolean) {
-        prefs(ctx).edit().putBoolean(KEY_VPN_STARTED_BY_WATCHER, on).apply()
+    fun setPreferredServer(ctx: Context, name: String?) {
+        prefs(ctx).edit().putString(KEY_PREFERRED_SERVER, name ?: "").apply()
     }
 
     fun appTriggerPackages(ctx: Context): Set<String> {
@@ -81,6 +91,16 @@ object VpnPrefs {
         prefs(ctx).edit()
             .putString(KEY_APP_TRIGGER_PKGS, JSONArray(pkgs.toList()).toString())
             .apply()
+    }
+
+    fun isAppWatcherEnabled(ctx: Context): Boolean = prefs(ctx).getBoolean(KEY_APP_WATCHER_ENABLED, false)
+    fun setAppWatcherEnabled(ctx: Context, on: Boolean) {
+        prefs(ctx).edit().putBoolean(KEY_APP_WATCHER_ENABLED, on).apply()
+    }
+
+    fun isWatcherStartedVpn(ctx: Context): Boolean = prefs(ctx).getBoolean(KEY_WATCHER_STARTED_VPN, false)
+    fun setWatcherStartedVpn(ctx: Context, on: Boolean) {
+        prefs(ctx).edit().putBoolean(KEY_WATCHER_STARTED_VPN, on).apply()
     }
 
     fun isBatterySaver(ctx: Context): Boolean = prefs(ctx).getBoolean(KEY_BATTERY_SAVER, false)
