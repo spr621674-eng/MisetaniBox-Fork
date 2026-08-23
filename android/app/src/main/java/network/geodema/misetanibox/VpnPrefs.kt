@@ -98,8 +98,8 @@ object VpnPrefs {
         prefs(ctx).edit().putBoolean(KEY_APP_WATCHER_ENABLED, on).apply()
     }
 
-    fun isWatcherStartedVpn(ctx: Context): Boolean = prefs(ctx).getBoolean(KEY_WATCHER_STARTED_VPN, false)
-    fun setWatcherStartedVpn(ctx: Context, on: Boolean) {
+    fun isVpnStartedByWatcher(ctx: Context): Boolean = prefs(ctx).getBoolean(KEY_WATCHER_STARTED_VPN, false)
+    fun setVpnStartedByWatcher(ctx: Context, on: Boolean) {
         prefs(ctx).edit().putBoolean(KEY_WATCHER_STARTED_VPN, on).apply()
     }
 
