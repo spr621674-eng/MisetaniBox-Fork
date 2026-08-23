@@ -39,6 +39,28 @@ object VpnPrefs {
     const val KEY_APP_TRIGGER_PKGS = "app_trigger_pkgs"
     /** Экономичный режим: реже опрашивает ядро, меньше будит систему */
     const val KEY_BATTERY_SAVER = "battery_saver"
+    /** Явный флаг «пользователь включил автовключение по приложению» — раньше
+     * это читалось только по факту «жив ли AppWatcherService», а после
+     * перезагрузки телефона сервис уже мёртв, и BootReceiver не мог понять,
+     * поднимать его снова или нет. */
+    const val KEY_APP_WATCHER_ENABLED = "app_watcher_enabled"
+    /** Флаг «это VPN включил сам наблюдатель, а не пользователь вручную» —
+     * раньше жил только в памяти AppWatcherService (private var) и сбрасывался
+     * в false, если систему прибивала и перезапускала just этот сервис
+     * (START_STICKY), а VPN при этом продолжал работать. Из-за этого
+     * «выключить при выходе из приложения» переставало срабатывать после
+     * любого убийства сервиса системой. */
+    const val KEY_VPN_STARTED_BY_WATCHER = "vpn_started_by_watcher"
+
+    fun isAppWatcherEnabled(ctx: Context): Boolean = prefs(ctx).getBoolean(KEY_APP_WATCHER_ENABLED, false)
+    fun setAppWatcherEnabled(ctx: Context, on: Boolean) {
+        prefs(ctx).edit().putBoolean(KEY_APP_WATCHER_ENABLED, on).apply()
+    }
+
+    fun isVpnStartedByWatcher(ctx: Context): Boolean = prefs(ctx).getBoolean(KEY_VPN_STARTED_BY_WATCHER, false)
+    fun setVpnStartedByWatcher(ctx: Context, on: Boolean) {
+        prefs(ctx).edit().putBoolean(KEY_VPN_STARTED_BY_WATCHER, on).apply()
+    }
 
     fun appTriggerPackages(ctx: Context): Set<String> {
         val raw = prefs(ctx).getString(KEY_APP_TRIGGER_PKGS, "[]") ?: "[]"
