@@ -321,6 +321,11 @@ class MihomoVpnService : VpnService() {
     private fun testOneConfig(config: String): Boolean {
         var pfd: ParcelFileDescriptor? = null
         var fd = -1
+        // true как только Mobilecore.start() успешно принял fd — с этого момента его
+        // закрывает САМО ядро при Stop(), и закрывать вручную больше нельзя: двойное
+        // закрытие одного и того же дескриптора на нативном уровне может уронить
+        // процесс приложения целиком (именно так тут и крашилось).
+        var coreOwnsFd = false
         return try {
             val builder = Builder()
                 .setSession("MisetaniboxTest")
@@ -338,6 +343,7 @@ class MihomoVpnService : VpnService() {
             })
             val err = Mobilecore.start(homeDir, config, fd.toLong())
             if (err.isNotEmpty()) return false
+            coreOwnsFd = true
 
             var ok = false
             for (i in 0 until 8) {
@@ -378,7 +384,12 @@ class MihomoVpnService : VpnService() {
         } catch (_: Exception) {
             false
         } finally {
-            try { if (fd >= 0) ParcelFileDescriptor.adoptFd(fd).close() } catch (_: Exception) {}
+            // Закрываем сами ТОЛЬКО если ядро так и не приняло fd (Mobilecore.start
+            // не был успешным) — иначе двойное закрытие уже закрытого ядром
+            // дескриптора, отсюда и крашилось приложение целиком.
+            if (!coreOwnsFd && fd >= 0) {
+                try { ParcelFileDescriptor.adoptFd(fd).close() } catch (_: Exception) {}
+            }
         }
     }
 
