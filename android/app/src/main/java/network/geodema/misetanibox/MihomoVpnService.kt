@@ -51,6 +51,10 @@ class MihomoVpnService : VpnService() {
     companion object {
         const val ACTION_START = "network.geodema.misetanibox.START"
         const val ACTION_STOP = "network.geodema.misetanibox.STOP"
+        const val ACTION_TEST_UA = "network.geodema.misetanibox.TEST_UA"
+        const val EXTRA_TEST_URL = "test_url"
+        const val EXTRA_TEST_HWID = "test_hwid"
+        const val EXTRA_TEST_UAS = "test_uas"
         const val EXTRA_SUB_URL = "sub_url"
         const val EXTRA_HWID = "hwid"
         const val EXTRA_USER_AGENT = "user_agent"
@@ -116,6 +120,14 @@ class MihomoVpnService : VpnService() {
         when (intent?.action) {
             ACTION_STOP -> {
                 worker.execute { stopTunnel() }
+            }
+            ACTION_TEST_UA -> {
+                val url = intent.getStringExtra(EXTRA_TEST_URL) ?: ""
+                val hwid = intent.getStringExtra(EXTRA_TEST_HWID) ?: ""
+                val uas = intent.getStringArrayExtra(EXTRA_TEST_UAS) ?: arrayOf()
+                // Отдельный поток, не worker: это короткая фоновая проверка при
+                // добавлении подписки, ей не место в очереди реальных start/stop.
+                Thread { testUserAgents(url, hwid, uas) }.start()
             }
             else -> {
                 val subUrl = intent?.getStringExtra(EXTRA_SUB_URL) ?: ""
@@ -239,6 +251,134 @@ class MihomoVpnService : VpnService() {
         } catch (e: Exception) {
             broadcast("error", e.message ?: "неизвестная ошибка запуска")
             stopTunnel()
+        }
+    }
+
+    // ---------- авто-подбор User-Agent при добавлении подписки ----------
+    // Проверка «список серверов не пустой» недостаточна: панель может вернуть непустой
+    // список под одним UA, а сами узлы внутри окажутся нерабочими (сломанные параметры
+    // протокола под этим форматом ответа). Поэтому проверяем по-настоящему: реально
+    // поднимаем короткий тестовый туннель под каждым UA и смотрим, отвечает ли хоть
+    // один узел через сам прокси-протокол (не просто открывается TCP до адреса).
+    @Volatile private var testingUa = false
+
+    private fun testUaBroadcast(kind: String, ua: String, extra: String = "") {
+        val i = Intent("network.geodema.misetanibox.VPN_STATE")
+        i.setPackage(packageName)
+        i.putExtra("state", "uaTest")
+        i.putExtra("message", "$kind|$ua|$extra")
+        sendBroadcast(i)
+    }
+
+    private fun testUserAgents(url: String, hwid: String, uas: Array<String>) {
+        // Нельзя поднимать тестовый туннель поверх уже активного — Android разрешает
+        // только один установленный VpnService.Builder за раз, второй establish()
+        // тихо оборвал бы реальное подключение пользователя.
+        if (running) {
+            testUaBroadcast("done", "", "already_connected")
+            return
+        }
+        if (testingUa) return // проверка уже идёт — повторный запуск игнорируем
+        testingUa = true
+        var winner = ""
+        try {
+            for (ua in uas) {
+                if (running) break // пользователь тем временем подключился вручную — прерываем тест
+                testUaBroadcast("trying", ua)
+                val fetched = Subscription.fetch(url, hwid, ua)
+                if (fetched.body.isBlank()) {
+                    testUaBroadcast("fail", ua, fetched.error ?: "пустой ответ")
+                    continue
+                }
+                val config = try {
+                    Subscription.convert(fetched.body).config
+                } catch (e: Exception) {
+                    testUaBroadcast("fail", ua, e.message ?: "формат не распознан")
+                    continue
+                }
+                if (testOneConfig(config)) {
+                    winner = ua
+                    testUaBroadcast("ok", ua)
+                    break
+                } else {
+                    testUaBroadcast("fail", ua, "сервера не отвечают")
+                }
+            }
+        } finally {
+            testingUa = false
+            testUaBroadcast("done", winner)
+        }
+    }
+
+    /**
+     * Поднимает временный туннель с готовым конфигом, проверяет первый узел основной
+     * группы через реальный прокси-протокол (delay-запрос ядра, а не просто открытие
+     * TCP-порта), гасит туннель. Использует отдельную домашнюю директорию ядра
+     * ("clash_test"), чтобы не задеть кэш/состояние основного подключения, и локальные
+     * переменные fd/pfd — не трогает общие tunFd/ownedTunFd, чтобы не мешать реальному
+     * подключению, если оно вдруг начнётся параллельно.
+     */
+    private fun testOneConfig(config: String): Boolean {
+        var pfd: ParcelFileDescriptor? = null
+        var fd = -1
+        return try {
+            val builder = Builder()
+                .setSession("MisetaniboxTest")
+                .setMtu(9000)
+                .addAddress("172.19.0.1", 30)
+                .addRoute("0.0.0.0", 0)
+                .addDnsServer("172.19.0.2")
+                .setBlocking(false)
+            try { builder.addDisallowedApplication(packageName) } catch (_: Exception) {}
+            pfd = builder.establish() ?: return false
+            fd = pfd.detachFd()
+            val homeDir = File(filesDir, "clash_test").apply { mkdirs() }.absolutePath
+            Mobilecore.setProtect(object : SocketProtector {
+                override fun protect(fd: Long): Boolean = protect(fd.toInt())
+            })
+            val err = Mobilecore.start(homeDir, config, fd.toLong())
+            if (err.isNotEmpty()) return false
+
+            var ok = false
+            for (i in 0 until 8) {
+                try {
+                    val u = java.net.URL("http://127.0.0.1:9090/proxies")
+                    val c = u.openConnection() as java.net.HttpURLConnection
+                    c.connectTimeout = 1000; c.readTimeout = 1500
+                    if (c.responseCode in 200..299) {
+                        val json = org.json.JSONObject(c.inputStream.bufferedReader().use { it.readText() })
+                        c.disconnect()
+                        val group = json.optJSONObject("proxies")?.optJSONObject("PROXY")
+                        val all = group?.optJSONArray("all")
+                        val node = if (all != null && all.length() > 0) all.optString(0) else null
+                        if (node != null) {
+                            val testUrl = java.net.URLEncoder.encode("http://www.gstatic.com/generate_204", "UTF-8")
+                            val du = java.net.URL(
+                                "http://127.0.0.1:9090/proxies/" +
+                                    java.net.URLEncoder.encode(node, "UTF-8") +
+                                    "/delay?timeout=4000&url=$testUrl"
+                            )
+                            val dc = du.openConnection() as java.net.HttpURLConnection
+                            dc.connectTimeout = 1000; dc.readTimeout = 5000
+                            if (dc.responseCode in 200..299) {
+                                val dj = org.json.JSONObject(dc.inputStream.bufferedReader().use { it.readText() })
+                                ok = dj.optInt("delay", -1) > 0
+                            }
+                            dc.disconnect()
+                        }
+                        break
+                    }
+                    c.disconnect()
+                } catch (_: Exception) {}
+                Thread.sleep(700)
+            }
+            try { Mobilecore.stop() } catch (_: Exception) {}
+            try { Mobilecore.setProtect(null) } catch (_: Exception) {}
+            ok
+        } catch (_: Exception) {
+            false
+        } finally {
+            try { if (fd >= 0) ParcelFileDescriptor.adoptFd(fd).close() } catch (_: Exception) {}
         }
     }
 

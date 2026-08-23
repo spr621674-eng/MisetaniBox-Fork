@@ -296,6 +296,33 @@ class VpnPlugin : Plugin() {
         call.resolve(JSObject().put("name", VpnPrefs.preferredServer(context) ?: ""))
     }
 
+    // Запускает авто-подбор рабочего User-Agent для подписки: нативная сторона
+    // по очереди реально проверяет каждый вариант (см. MihomoVpnService.testUserAgents).
+    // Сам результат приходит НЕ из этого вызова, а позже через обычный vpnState-листенер
+    // с state:"uaTest" — этот метод только запускает проверку и сразу возвращается.
+    @PluginMethod
+    fun testUserAgents(call: PluginCall) {
+        val url = call.getString("url") ?: ""
+        val hwid = call.getString("hwid") ?: ""
+        val arr = call.getArray("uas", com.getcapacitor.JSArray())
+        val uas = ArrayList<String>()
+        for (i in 0 until (arr?.length() ?: 0)) {
+            arr?.optString(i)?.let { if (it.isNotBlank()) uas.add(it) }
+        }
+        if (url.isBlank() || uas.isEmpty()) { call.reject("нет ссылки или списка User-Agent"); return }
+        if (MihomoVpnService.isRunning) { call.reject("сначала отключите VPN"); return }
+        val prepare = VpnService.prepare(context)
+        if (prepare != null) { call.reject("нужно разрешение VPN"); return }
+        val i = Intent(context, MihomoVpnService::class.java)
+        i.action = MihomoVpnService.ACTION_TEST_UA
+        i.putExtra(MihomoVpnService.EXTRA_TEST_URL, url)
+        i.putExtra(MihomoVpnService.EXTRA_TEST_HWID, hwid)
+        i.putExtra(MihomoVpnService.EXTRA_TEST_UAS, uas.toTypedArray())
+        // не foreground — это короткая фоновая проверка, а не постоянный туннель
+        context.startService(i)
+        call.resolve()
+    }
+
     @PluginMethod
     fun stop(call: PluginCall) {
         val i = Intent(context, MihomoVpnService::class.java)
