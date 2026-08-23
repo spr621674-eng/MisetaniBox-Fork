@@ -100,6 +100,14 @@ body{background:var(--bg);color:var(--fg);font-family:'Inter Tight',sans-serif;o
 .sub-input{width:100%;margin-top:16px;padding:14px;background:transparent;border:1px solid var(--ln);border-radius:var(--rad);color:var(--fg);font-family:'JetBrains Mono',monospace;font-size:13px}
 .sub-input:focus{outline:none;border-color:var(--fg)}
 .sub-modal-btns{display:flex;gap:10px;margin-top:16px}
+.center-modal{position:fixed;inset:0;background:rgba(0,0,0,.55);display:flex;align-items:center;justify-content:center;z-index:70;padding:24px}
+.center-modal.hidden{display:none}
+.center-modal-card{position:relative;width:100%;max-width:340px;background:var(--bg);border:1px solid var(--ln);border-radius:var(--rad);padding:26px 22px 22px}
+.center-modal-close{position:absolute;top:10px;right:10px;width:30px;height:30px;border:1px solid var(--ln);border-radius:50%;background:none;color:var(--dim);font-size:13px;cursor:pointer}
+.center-modal-title{font-weight:800;font-size:18px;letter-spacing:-.01em;padding-right:28px}
+.center-modal-text{font-size:13.5px;color:var(--dim);line-height:1.55;margin-top:10px}
+.center-modal-hint{font-family:'JetBrains Mono',monospace;font-size:10.5px;letter-spacing:.06em;color:var(--mut);margin-top:16px;display:flex;align-items:center;gap:8px}
+.center-modal-hint .dot{width:7px;height:7px;border-radius:50%;background:currentColor;animation:banner-pulse 1s ease-in-out infinite;flex:none}
 .sub-btn{flex:1;padding:14px;border-radius:var(--rad);font-weight:600;font-size:14px;cursor:pointer;border:1px solid var(--ln);background:transparent;color:var(--fg)}
 .sub-btn.primary{background:var(--fg);color:var(--bg);border-color:var(--fg)}
 .list-note{padding:20px 24px;font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:.06em;color:var(--mut);line-height:1.7}
@@ -381,6 +389,15 @@ body{background:var(--bg);color:var(--fg);font-family:'Inter Tight',sans-serif;o
         <button class="sub-btn ghost" onclick="closeUpdateModal()">Позже</button>
         <button class="sub-btn primary" id="update-download-btn" onclick="startUpdateDownload()">Скачать и установить</button>
       </div>
+    </div>
+  </div>
+
+  <div class="center-modal hidden" id="ua-test-modal">
+    <div class="center-modal-card">
+      <button class="center-modal-close" onclick="closeUaTestModal()">✕</button>
+      <div class="center-modal-title">Подбираю рабочий формат подписки</div>
+      <div class="center-modal-text">Некоторые сервера показываются в списке, но не работают из-за формата ответа панели. Сейчас проверю несколько вариантов по очереди — интернет на телефоне может на секунду-другую пропадать, это нормально, скоро включится обратно.</div>
+      <div class="center-modal-hint"><span class="dot"></span><span id="ua-test-hint-text">Начинаю проверку…</span></div>
     </div>
   </div>
 
@@ -706,6 +723,11 @@ if(Vpn && Vpn.addListener){
   Vpn.addListener('vpnState', (s)=>{
     dbg('событие: '+s.state+(s.message?' — '+s.message:''));
     if(s.state==='diag'){ dbg('ядро: '+String(s.message||'').trim().replace(/\n/g,' | ')); return; }
+    if(s.state==='uaTest'){
+      const parts=(s.message||'').split('|');
+      handleUaTestEvent(parts[0]||'', parts[1]||'', parts[2]||'');
+      return;
+    }
     // любое финальное состояние снимает блокировку кнопки — ждать больше нечего
     if(s.state==='connected'||s.state==='cached'||s.state==='disconnected'||s.state==='error') unlockConnectBtn();
     if(s.state==='connected') setUiConnected(true);
@@ -1538,7 +1560,57 @@ async function saveSubModal(){
   if(dup){ setActiveSub(dup.id); closeSubModal(); renderSubs(); toast('Уже добавлена — сделал активной'); go('servers'); return; }
   const item={id:'s'+Date.now(), name:subName(url), url};
   list.push(item); saveSubs(list); setActiveSub(item.id);
-  closeSubModal(); renderSubs(); toast('Подписка добавлена'); go('servers');
+  closeSubModal(); renderSubs(); go('servers');
+  // Авто-подбор рабочего User-Agent — только если сейчас НЕ подключены: проверка
+  // реально поднимает и гасит тестовый туннель под каждым вариантом, а Android
+  // разрешает только одно активное VPN-подключение разом.
+  if(!connected && Vpn && Vpn.testUserAgents){
+    autoDetectUa(url);
+  } else {
+    toast('Подписка добавлена');
+    if(connected) toast('Автоподбор User-Agent доступен только при отключённом VPN');
+  }
+}
+
+// ---------- авто-подбор User-Agent (реальная проверка через нативную сторону) ----------
+let uaTestResolver=null;
+function uaLabel(ua){ const p=UA_PRESETS.find(x=>x.ua===ua); return p ? p.t : ua; }
+function showUaTestModal(){
+  const m=document.getElementById('ua-test-modal'); if(!m) return;
+  document.getElementById('ua-test-hint-text').textContent='Начинаю проверку…';
+  m.classList.remove('hidden');
+}
+function closeUaTestModal(){
+  const m=document.getElementById('ua-test-modal'); if(m) m.classList.add('hidden');
+}
+function handleUaTestEvent(kind, ua, extra){
+  const el=document.getElementById('ua-test-hint-text');
+  if(kind==='trying' && el) el.textContent='Пробую формат «'+uaLabel(ua)+'»…';
+  else if(kind==='ok' && el) el.textContent='✓ подошёл формат «'+uaLabel(ua)+'»';
+  else if(kind==='fail' && el) el.textContent='✕ «'+uaLabel(ua)+'» не подошёл, пробую следующий…';
+  else if(kind==='done'){
+    closeUaTestModal();
+    if(uaTestResolver){ const r=uaTestResolver; uaTestResolver=null; r(ua||null); }
+  }
+}
+async function autoDetectUa(url){
+  if(!Vpn || !Vpn.testUserAgents) return;
+  showUaTestModal();
+  try{
+    await Vpn.testUserAgents({ url, hwid: getHwid(), uas: UA_PRESETS.map(p=>p.ua) });
+  }catch(e){
+    closeUaTestModal();
+    toast('Автоподбор не запущен: '+(e&&e.message?e.message:e));
+    return;
+  }
+  const winner = await new Promise(res=>{ uaTestResolver=res; });
+  if(winner){
+    setUserAgent(winner);
+    toast('Подобран формат подписки: '+uaLabel(winner));
+  }else{
+    toast('Не удалось подобрать рабочий формат — выберите User-Agent вручную');
+  }
+  previewServers();
 }
 
 // ---------- трафик (реальный, из API ядра) ----------
