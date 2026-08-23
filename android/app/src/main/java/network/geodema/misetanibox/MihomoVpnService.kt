@@ -17,7 +17,9 @@ import java.io.File
 
 class MihomoVpnService : VpnService() {
 
-    private var tunFd: ParcelFileDescriptor? = null
+    // Раньше это поле не было volatile, хотя к нему обращались и воркер, и (в onDestroy)
+    // вызывающий поток напрямую — классическая гонка видимости между потоками.
+    @Volatile private var tunFd: ParcelFileDescriptor? = null
     // Сырой дескриптор TUN, пока ИМ ВЛАДЕЕМ МЫ. После успешного старта владение переходит
     // ядру (sing-tun закрывает его сам при Stop), и здесь снова -1 — чтобы не закрыть дважды.
     @Volatile private var ownedTunFd = -1
@@ -26,6 +28,10 @@ class MihomoVpnService : VpnService() {
     private val worker = java.util.concurrent.Executors.newSingleThreadExecutor()
     private var netCallback: android.net.ConnectivityManager.NetworkCallback? = null
     @Volatile private var running = false
+    // Защита stopTunnel() от повторного/параллельного входа — раньше двойной вызов
+    // (например, из ACTION_STOP и следом из onDestroy) слал два broadcast("disconnected")
+    // и дважды дёргал stopForeground/stopSelf.
+    private val stopping = java.util.concurrent.atomic.AtomicBoolean(false)
 
     // --- Отключение по блокировке экрана (аналог функции INCY) ---
     private var screenReceiver: BroadcastReceiver? = null
@@ -282,19 +288,27 @@ class MihomoVpnService : VpnService() {
     }
 
     private fun stopTunnel() {
-        unwatchNetworkChanges()
-        try { Mobilecore.stop() } catch (_: Exception) {}
-        try { Mobilecore.setProtect(null) } catch (_: Exception) {}
-        closeOwnedTunFd()
-        tunFd = null
-        running = false
-        isRunning = false
-        pausedByLock = false
-        lastParams = null
-        broadcast("disconnected", "")
-        unregisterScreenReceiver()
-        stopForeground(STOP_FOREGROUND_REMOVE)
-        stopSelf()
+        // Идемпотентность: если stopTunnel() уже выполняется (или только что завершился)
+        // из-за повторного/параллельного вызова, второй вход просто выходит — раньше это
+        // приводило к двойным broadcast("disconnected") и повторным stopForeground/stopSelf.
+        if (!stopping.compareAndSet(false, true)) return
+        try {
+            unwatchNetworkChanges()
+            try { Mobilecore.stop() } catch (_: Exception) {}
+            try { Mobilecore.setProtect(null) } catch (_: Exception) {}
+            closeOwnedTunFd()
+            tunFd = null
+            running = false
+            isRunning = false
+            pausedByLock = false
+            lastParams = null
+            broadcast("disconnected", "")
+            unregisterScreenReceiver()
+            stopForeground(STOP_FOREGROUND_REMOVE)
+            stopSelf()
+        } finally {
+            stopping.set(false)
+        }
     }
 
     private fun pauseTunnel() {
@@ -318,6 +332,7 @@ class MihomoVpnService : VpnService() {
 
     private fun watchNetworkChanges() {
         if (netCallback != null) return
+        lastNetworkHandle = -1
         val cm = getSystemService(Context.CONNECTIVITY_SERVICE) as? android.net.ConnectivityManager ?: return
         val cb = object : android.net.ConnectivityManager.NetworkCallback() {
             override fun onAvailable(network: android.net.Network) {
@@ -348,14 +363,21 @@ class MihomoVpnService : VpnService() {
         } catch (_: Exception) {}
     }
 
-    @Volatile private var lastNetSwitch = 0L
+    // Раньше сброс всех активных соединений ядра (DELETE /connections) срабатывал на
+    // КАЖДУЮ переоценку onCapabilitiesChanged — а это событие Android шлёт намного чаще,
+    // чем реально меняется сеть (сила сигнала сотовой сети, оценка пропускной способности
+    // переоцениваются постоянно). На нестабильном мобильном сигнале это могло срабатывать
+    // почти непрерывно каждые ~1.5с, обнуляя все соединения внутри туннеля без всякой
+    // реальной смены сети — сажало батарею и выглядело как «рвущийся» VPN. Теперь тяжёлая
+    // часть (сброс соединений) идёт только если сеть реально другая (сравниваем handle).
+    @Volatile private var lastNetworkHandle: Long = -1
     private fun onNetworkSwitched(network: android.net.Network) {
         if (!running) return
-        val now = android.os.SystemClock.elapsedRealtime()
-        if (now - lastNetSwitch < 1500) return
-        lastNetSwitch = now
-
         try { setUnderlyingNetworks(arrayOf(network)) } catch (_: Exception) {}
+
+        val handle = network.networkHandle
+        if (handle == lastNetworkHandle) return // та же сеть — просто переоценка её характеристик
+        lastNetworkHandle = handle
 
         worker.execute {
             try {
@@ -380,7 +402,19 @@ class MihomoVpnService : VpnService() {
 
     override fun onDestroy() {
         unregisterScreenReceiver()
-        stopTunnel()
+        // Раньше stopTunnel() вызывался здесь НАПРЯМУЮ, на вызывающем потоке (обычно
+        // главном/binder), в обход воркера. Если в этот момент воркер ещё выполнял
+        // startTunnel() (ядро долго стартует / подписка медленно грузится, а систем
+        // убивает сервис прямо в этот момент — частый случай на слабых устройствах),
+        // два потока одновременно трогали tunFd/ownedTunFd/running без синхронизации —
+        // гонка данных, вплоть до двойного закрытия дескриптора туннеля.
+        // submit()+get(timeout) сериализует его с воркером, но не даёт зависнуть
+        // насовсем, если воркер почему-то не отвечает вовремя.
+        try {
+            worker.submit { stopTunnel() }.get(3, java.util.concurrent.TimeUnit.SECONDS)
+        } catch (_: Exception) {
+            stopTunnel() // воркер не ответил вовремя — подчищаем сами; stopTunnel() идемпотентен
+        }
         worker.shutdown()
         super.onDestroy()
     }
