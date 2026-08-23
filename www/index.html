@@ -42,6 +42,7 @@ body{background:var(--bg);color:var(--fg);font-family:'Inter Tight',sans-serif;o
 .status-lbl{font-family:'JetBrains Mono',monospace;font-size:9.5px;letter-spacing:.2em;color:var(--mut)}
 .status-val{font-family:'JetBrains Mono',monospace;font-size:12px;letter-spacing:.14em;color:var(--dim);margin-top:8px}
 .connect{margin-top:26px;border-top:1px solid var(--fg);border-bottom:1px solid var(--fg);padding:24px;cursor:pointer;user-select:none}
+.connect.busy{opacity:.55;pointer-events:none}
 .connect .big{font-weight:700;font-size:72px;line-height:.95;letter-spacing:-.02em}
 .connect .sub{display:flex;justify-content:space-between;align-items:center;margin-top:16px;font-family:'JetBrains Mono',monospace;font-size:9px;letter-spacing:.16em;color:var(--mut)}
 .connect-button{display:none}
@@ -637,7 +638,6 @@ function setUiConnected(on){
     }
     showServersBanner('updating','Ядро скачивает актуальный список серверов…');
     waitForServers();
-    setTimeout(applyModeToCore, 2500);
   }else{
     big.innerHTML='ПОДКЛЮ-<br>ЧИТЬСЯ'; sv.textContent='○ ОТКЛЮЧЕНО'; sv.style.color='';
     if(glyph) glyph.textContent='◇'; if(label) label.textContent='ПОДКЛЮЧИТЬСЯ';
@@ -649,16 +649,45 @@ function setUiConnected(on){
 }
 function setStatusText(t){ const sv=document.getElementById('status-val'); if(sv) sv.textContent=t; }
 
+// ---------- защита кнопки подключения от гонок ----------
+// Без этого быстрый двойной тап (или просто медленный ответ ядра на слабом
+// устройстве) уходил в native как два параллельных start()/stop() — VPN мог
+// застревать в рваном состоянии. watchdog отдельно защищает от обратного случая:
+// если native почему-то вообще не прислал событие vpnState, кнопка не должна
+// зависать в «ПОДКЛЮЧЕНИЕ…» навсегда.
+let connectPending=false, connectWatchdog=null;
+function clearConnectWatchdog(){ if(connectWatchdog){ clearTimeout(connectWatchdog); connectWatchdog=null; } }
+function lockConnectBtn(){
+  connectPending=true;
+  const el=document.getElementById('connect'); if(el) el.classList.add('busy');
+  clearConnectWatchdog();
+  connectWatchdog=setTimeout(()=>{
+    if(!connectPending) return;
+    dbg('watchdog: нет ответа от VPN за 30с — сбрасываю состояние кнопки');
+    unlockConnectBtn();
+    setStatusText(connected ? '● ПОДКЛЮЧЕНО' : '○ ОТКЛЮЧЕНО');
+    toast('Не удалось получить ответ от VPN — попробуйте ещё раз');
+  }, 30000);
+}
+function unlockConnectBtn(){
+  connectPending=false;
+  const el=document.getElementById('connect'); if(el) el.classList.remove('busy');
+  clearConnectWatchdog();
+}
+
 async function toggleConnect(){
   dbg('тап connect | native='+isNative+' plugin='+(!!Vpn)+' hasStart='+(!!(Vpn&&Vpn.start)));
+  if(connectPending){ dbg('игнор тапа: уже ждём ответа от предыдущего'); return; }
   if(!isNative || !Vpn){ dbg('НЕ нативно → демо-режим (плагин недоступен!)'); setUiConnected(!connected); return; }
   if(connected){
+    lockConnectBtn();
     setStatusText('○ ОТКЛЮЧЕНИЕ…'); dbg('Vpn.stop()');
-    try{ await Vpn.stop(); }catch(e){ dbg('stop err: '+e); }
+    try{ await Vpn.stop(); }catch(e){ dbg('stop err: '+e); unlockConnectBtn(); }
     return;
   }
   const sub=getSubUrl();
   if(!sub){ toast('Сначала добавьте подписку'); go('subs'); openSubModal(); return; }
+  lockConnectBtn();
   setStatusText('◌ ПОДКЛЮЧЕНИЕ…'); dbg('Vpn.start(sub='+sub.substr(0,28)+'…)');
   const sm=splitMode();
   const sApps=sm==='off'?[]:[...splitSelected];
@@ -667,13 +696,18 @@ async function toggleConnect(){
   const chainList = chains();
   dbg('правил='+rulesList.length+' цепочек='+chainList.length);
   try{ const r=await Vpn.start({ subUrl: sub, hwid: getHwid(), userAgent: getUserAgent(), splitMode: sm, splitApps: sApps, rules: rulesList, chains: chainList }); dbg('start() вернул: '+JSON.stringify(r||{})); }
-  catch(e){ setStatusText('○ ОТКЛЮЧЕНО'); dbg('start() REJECT: '+(e&&e.message?e.message:e)); toast('Ошибка старта: '+(e&&e.message?e.message:e)); }
+  catch(e){
+    unlockConnectBtn();
+    setStatusText('○ ОТКЛЮЧЕНО'); dbg('start() REJECT: '+(e&&e.message?e.message:e)); toast('Ошибка старта: '+(e&&e.message?e.message:e));
+  }
 }
 
 if(Vpn && Vpn.addListener){
   Vpn.addListener('vpnState', (s)=>{
     dbg('событие: '+s.state+(s.message?' — '+s.message:''));
     if(s.state==='diag'){ dbg('ядро: '+String(s.message||'').trim().replace(/\n/g,' | ')); return; }
+    // любое финальное состояние снимает блокировку кнопки — ждать больше нечего
+    if(s.state==='connected'||s.state==='cached'||s.state==='disconnected'||s.state==='error') unlockConnectBtn();
     if(s.state==='connected') setUiConnected(true);
     else if(s.state==='cached'){
       setUiConnected(true);
@@ -722,8 +756,12 @@ let _proxies=null, expandedGroups={};
 function q(s){ return String(s).replace(/\\/g,'\\\\').replace(/'/g,"\\'"); }
 function isGroup(p){ return p && Array.isArray(p.all); }
 function isSelector(p){ return p && String(p.type||'').toLowerCase()==='selector'; }
-// порядок групп берём из GLOBAL.all (мihomo хранит там порядок конфига), GLOBAL прячем
+// порядок групп берём из GLOBAL.all (мihomo хранит там порядок конфига), GLOBAL прячем —
+// кроме режима «Глобально», где это единственная нужная группа (см. ниже)
 function orderedGroups(P){
+  // В режиме «Глобально» правила не участвуют — весь трафик идёт через один
+  // выбранный узел из служебной группы GLOBAL, остальные группы не имеют смысла.
+  if(curMode()==='global' && P['GLOBAL']) return ['GLOBAL'];
   // прячем GLOBAL и группы с hidden:true (mihomo помечает служебные — как во FlClash)
   const names=Object.keys(P).filter(n=>isGroup(P[n]) && n!=='GLOBAL' && !P[n].hidden);
   const gl=(P['GLOBAL']&&Array.isArray(P['GLOBAL'].all))?P['GLOBAL'].all.filter(n=>names.includes(n)):[];
@@ -733,6 +771,7 @@ function orderedGroups(P){
 }
 // «основная» группа для главного экрана — первый селектор (лучше с именем про основной трафик)
 function pickMainGroup(P, order){
+  if(curMode()==='global' && P['GLOBAL']) return 'GLOBAL';
   const sel=order.filter(n=>isSelector(P[n]));
   return sel.find(n=>/зарубеж|proxy|select|节点|節点|fast|быстр|основ|main/i.test(n)) || sel[0] || order[0] || null;
 }
@@ -872,10 +911,16 @@ async function previewServers(){
 }
 // после коннекта ждём, пока ядро скачает подписку и поднимет API
 async function waitForServers(){
+  // Раньше режим маршрутизации (rule/global/direct) применялся через слепой
+  // setTimeout(2.5с) после старта — на медленном холодном запуске ядро иногда
+  // не успевало подняться за это время, и режим тихо терялся без ошибки.
+  // Теперь применяем его сразу, как только API ядра реально ответило.
+  let modeApplied=false;
   for(let i=0;i<20;i++){
     if(!connected) return;
     const r=await core('GET','/proxies');
     if(r.ok && r.data){
+      if(!modeApplied){ modeApplied=true; applyModeToCore(); }
       const g=r.data.proxies && r.data.proxies[GROUP];
       if(g && g.all && g.all.length){
         const pref=getPreferred();
@@ -892,6 +937,7 @@ async function waitForServers(){
   }
   // не дождались за все попытки — не стираем то, что уже показано (превью/кэш),
   // просто честно сообщаем, что свежих данных получить не удалось
+  if(!modeApplied) applyModeToCore(); // последняя попытка — вдруг API поднялось прямо к концу цикла
   const cached=cachedServers();
   showServersBanner('offline', cached ? ('Не удалось обновить — показаны данные от '+fmtTime(cached.ts)) : 'Не удалось получить список серверов');
 }
@@ -977,7 +1023,11 @@ async function applyModeToCore(){
 async function cycleMode(){
   const i=MODES.findIndex(x=>x.v===curMode()); const next=MODES[(i+1)%MODES.length];
   localStorage.setItem('mise_mode', next.v); applyModeLabel();
-  if(connected){ await applyModeToCore(); }
+  if(connected){
+    await applyModeToCore();
+    // список групп зависит от режима (в «Глобально» — только один селектор GLOBAL)
+    if(_proxies) renderProxies();
+  }
   toast('Режим: '+next.l);
 }
 
