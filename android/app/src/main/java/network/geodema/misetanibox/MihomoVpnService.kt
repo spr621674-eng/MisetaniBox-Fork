@@ -225,7 +225,10 @@ class MihomoVpnService : VpnService() {
             } else {
                 writeCachedConfig(config!!)
             }
-            val finalConfig = config!!
+            // Свои правила/цепочки — это локальные настройки пользователя, а не часть
+            // подписки, поэтому накладываются ПОВЕРХ config'а каждый раз заново (и на
+            // свежий, и на закэшированный) — см. applyCustomExtras().
+            val finalConfig = applyCustomExtras(config!!, rules, chains, serviceGroups)
             val builder = Builder()
                 .setSession("Misetanibox")
                 .setMtu(9000)
@@ -261,6 +264,7 @@ class MihomoVpnService : VpnService() {
             isRunning = true
             updateNotif(connected = true)
             broadcast("connected", "")
+            applyRoutingMode()
             applyPreferredServer()
             scheduleDiagBroadcast()
         } catch (e: Exception) {
@@ -440,6 +444,36 @@ class MihomoVpnService : VpnService() {
         }.start()
     }
 
+    // Раньше режим маршрутизации (rule/global/direct) применялся ТОЛЬКО из открытого
+    // WebView (JS applyModeToCore(), PATCH /configs) — при запуске из плитки/
+    // автовключения по приложению/автозапуска после перезагрузки интерфейс не открыт,
+    // и ядро молча оставалось в дефолтном режиме "rule" вместо реально выбранного
+    // пользователем. VpnPrefs.routingMode() — зеркало JS 'mise_mode', см. VpnPlugin.setRoutingMode.
+    private fun applyRoutingMode() {
+        Thread {
+            try {
+                val mode = VpnPrefs.routingMode(this)
+                if (mode == "rule") return@Thread // конфиг и так стартует в этом режиме, лишний запрос не нужен
+                for (i in 0 until 15) {
+                    if (!running) return@Thread
+                    try {
+                        val u = java.net.URL("http://127.0.0.1:9090/configs")
+                        val c = u.openConnection() as java.net.HttpURLConnection
+                        c.requestMethod = "PATCH"
+                        c.doOutput = true
+                        c.connectTimeout = 1500
+                        c.readTimeout = 2000
+                        c.outputStream.use { it.write("{\"mode\":${org.json.JSONObject.quote(mode)}}".toByteArray()) }
+                        val code = c.responseCode
+                        c.disconnect()
+                        if (code in 200..299) return@Thread
+                    } catch (_: Exception) {}
+                    Thread.sleep(1000)
+                }
+            } catch (_: Exception) {}
+        }.start()
+    }
+
     // Раньше «сервер по умолчанию» переприменялся ТОЛЬКО из открытого WebView — при
     // автовключении по приложению, плитке или автозапуске после перезагрузки интерфейс
     // не открыт, и ядро молча оставалось на своём дефолтном узле группы PROXY вместо
@@ -467,14 +501,19 @@ class MihomoVpnService : VpnService() {
                     Thread.sleep(1000)
                 }
                 val pref = VpnPrefs.preferredServer(this)
-                val group = proxiesJson?.optJSONObject("proxies")?.optJSONObject("PROXY")
+                val proxies = proxiesJson?.optJSONObject("proxies")
+                // В режиме "Глобально" реальная группа роутинга — GLOBAL, а не PROXY
+                // (см. pickMainGroup() в index.html) — раньше здесь было захардкожено
+                // "PROXY", и предпочтительный сервер в Global-режиме применялся не туда.
+                val groupName = if (VpnPrefs.routingMode(this) == "global" && proxies?.has("GLOBAL") == true) "GLOBAL" else "PROXY"
+                val group = proxies?.optJSONObject(groupName)
                 val all = group?.optJSONArray("all")
                 if (!pref.isNullOrBlank() && all != null) {
                     var has = false
                     for (i in 0 until all.length()) if (all.optString(i) == pref) { has = true; break }
                     if (has && group.optString("now") != pref) {
                         try {
-                            val u = java.net.URL("http://127.0.0.1:9090/proxies/PROXY")
+                            val u = java.net.URL("http://127.0.0.1:9090/proxies/$groupName")
                             val c = u.openConnection() as java.net.HttpURLConnection
                             c.requestMethod = "PUT"
                             c.doOutput = true
@@ -677,125 +716,100 @@ class MihomoVpnService : VpnService() {
     private fun yamlStr(v: String): String =
         "\"" + v.replace("\\", "\\\\").replace("\"", "\\\"") + "\""
 
-    private fun buildConfig(
-        subUrl: String,
-        hwid: String,
-        userAgent: String,
+    /**
+     * Раньше это была buildConfig() — строила ВЕСЬ конфиг с нуля через собственный
+     * proxy-providers, который сам заново скачивает подписку по URL и ожидает на входе
+     * готовый clash-YAML. Функция нигде не вызывалась (мёртвый код), а если бы
+     * вызывалась — сломала бы подписки в формате Xray JSON / список ссылок, потому что
+     * mihomo не умеет распарсить такой ответ как provider (а именно ради поддержки этих
+     * форматов и появился Subscription.convert() с конвертацией через Mobilecore).
+     * rules/chains/serviceGroups из UI при этом реально доходили только до Intent'а —
+     * дальше startTunnel() их просто игнорировал и запускал Subscription.convert(...).config
+     * как есть, без применения.
+     *
+     * Теперь вместо повторной сборки конфига с нуля — дописываем правила и цепочки
+     * ПОВЕРХ уже готового, гарантированно рабочего config'а (результата
+     * Subscription.convert(), не зависящего от исходного формата подписки).
+     *
+     * Правила — вставляются в начало существующего блока "rules:", чтобы иметь
+     * приоритет над правилами по умолчанию, но раньше финального MATCH-правила ядра.
+     *
+     * Цепочки — вместо отдельного повторного proxy-provider с dialer-proxy (что требовало
+     * второй фетч подписки и падало на не-YAML форматах) используются group type: relay:
+     * штатная возможность mihomo прогонять трафик последовательно через несколько узлов —
+     * работает с уже существующими именами узлов/групп без повторного скачивания.
+     *
+     * Если в конфиге неожиданно не нашлось секции rules:/proxy-groups: (незнакомый формат
+     * вывода ядра) — не роняем подключение, просто не применяем этот кусок и пишем в лог,
+     * чтобы это было видно при отладке, а не терялось молча.
+     */
+    private fun applyCustomExtras(
+        baseConfig: String,
         rules: Array<String>,
         chains: List<Pair<String, String>>,
         serviceGroups: Array<String>,
     ): String {
-        val header = buildString {
-            append("    header:\n")
-            append("      User-Agent: [${yamlStr(userAgent)}]")
-            if (hwid.isNotEmpty()) {
-                append("\n      x-hwid: [\"$hwid\"]")
-                append("\n      x-device-os: [\"Android\"]")
-                append("\n      x-ver-os: [\"${Build.VERSION.RELEASE}\"]")
-                append("\n      x-device-model: [\"${Build.MODEL}\"]")
+        if (rules.isEmpty() && chains.isEmpty() && serviceGroups.isEmpty()) return baseConfig
+
+        var config = baseConfig
+        val rulesHeader = Regex("""(?m)^rules:\s*$""")
+        val groupsHeader = Regex("""(?m)^proxy-groups:\s*$""")
+
+        if (rules.isNotEmpty()) {
+            val m = rulesHeader.find(config)
+            if (m != null) {
+                val insertAt = m.range.last + 1
+                val lines = buildString {
+                    for (r in rules) {
+                        val line = r.trim()
+                        if (line.isNotEmpty()) append("\n  - ").append(yamlStr(line))
+                    }
+                }
+                config = config.substring(0, insertAt) + lines + config.substring(insertAt)
+            } else {
+                android.util.Log.w("Misetanibox", "не нашёл секцию rules: в конфиге — свои правила не применены")
             }
         }
 
-        val chainProviders = StringBuilder()
-        val chainGroups = StringBuilder()
-        val chainNames = mutableListOf<String>()
-        chains.forEachIndexed { i, (name, entry) ->
-            val groupName = "$CHAIN_PREFIX$name"
-            chainNames += groupName
-            chainProviders.append(
-                """
-                |  chain$i:
-                |    type: http
-                |    url: ${yamlStr(subUrl)}
-                |    interval: 21600
-                |    path: ./providers/chain$i.yaml
-                |    override:
-                |      dialer-proxy: ${yamlStr(entry)}
-                |      additional-prefix: ${yamlStr("$name · ")}
-                |$header
-                """.trimMargin()
-            ).append("\n")
-            chainGroups.append(
-                """
-                |  - name: ${yamlStr(groupName)}
-                |    type: select
-                |    use:
-                |      - chain$i
-                """.trimMargin()
-            ).append("\n")
-        }
-
-        val proxyGroupChains = if (chainNames.isEmpty()) "" else
-            "\n    proxies:\n" + chainNames.joinToString("\n") { "      - ${yamlStr(it)}" }
-
-        val serviceGroupsBlock = StringBuilder()
-        for (g in serviceGroups) {
-            if (g.isBlank()) continue
-            serviceGroupsBlock.append(
-                """
-                |  - name: ${yamlStr(g)}
-                |    type: select
-                |    use:
-                |      - main
-                """.trimMargin()
-            ).append("\n")
-        }
-
-        val rulesBlock = buildString {
-            for (r in rules) {
-                val line = r.trim()
-                if (line.isNotEmpty()) append("  - ").append(yamlStr(line)).append("\n")
+        if (chains.isNotEmpty()) {
+            val m = groupsHeader.find(config)
+            if (m != null) {
+                val insertAt = m.range.last + 1
+                val block = buildString {
+                    for ((name, entry) in chains) {
+                        append("\n  - name: ").append(yamlStr("$CHAIN_PREFIX$name"))
+                        append("\n    type: relay")
+                        append("\n    proxies:")
+                        append("\n      - ").append(yamlStr(entry))
+                        append("\n      - PROXY")
+                    }
+                }
+                config = config.substring(0, insertAt) + block + config.substring(insertAt)
+            } else {
+                android.util.Log.w("Misetanibox", "не нашёл секцию proxy-groups: в конфиге — цепочки не применены")
             }
-            append("  - MATCH,PROXY")
         }
 
-        return """
-            |mixed-port: 7890
-            |mode: rule
-            |log-level: warning
-            |ipv6: false
-            |unified-delay: true
-            |find-process-mode: "off"
-            |profile:
-            |  store-selected: true
-            |external-controller: 127.0.0.1:9090
-            |dns:
-            |  enable: true
-            |  listen: 0.0.0.0:1053
-            |  ipv6: false
-            |  enhanced-mode: fake-ip
-            |  fake-ip-range: 198.18.0.1/16
-            |  fake-ip-filter:
-            |    - "*.lan"
-            |    - "*.local"
-            |    - "localhost.ptlogin2.qq.com"
-            |  default-nameserver:
-            |    - 77.88.8.8
-            |    - 223.5.5.5
-            |  nameserver:
-            |    - 77.88.8.8
-            |    - 223.5.5.5
-            |  proxy-server-nameserver:
-            |    - 77.88.8.8
-            |    - 223.5.5.5
-            |proxy-providers:
-            |  main:
-            |    type: http
-            |    url: ${yamlStr(subUrl)}
-            |    interval: 3600
-            |    path: ./providers/main.yaml
-            |$header
-            |$chainProviders
-            |proxy-groups:
-            |  - name: PROXY
-            |    type: select$proxyGroupChains
-            |    use:
-            |      - main
-            |$chainGroups
-            |$serviceGroupsBlock
-            |rules:
-            |$rulesBlock
-        """.trimMargin()
+        if (serviceGroups.isNotEmpty()) {
+            val m = groupsHeader.find(config)
+            if (m != null) {
+                val insertAt = m.range.last + 1
+                val block = buildString {
+                    for (g in serviceGroups) {
+                        val name = g.trim()
+                        if (name.isEmpty()) continue
+                        append("\n  - name: ").append(yamlStr(name))
+                        append("\n    type: select")
+                        append("\n    proxies:")
+                        append("\n      - PROXY")
+                        append("\n      - DIRECT")
+                    }
+                }
+                config = config.substring(0, insertAt) + block + config.substring(insertAt)
+            }
+        }
+
+        return config
     }
 
     private fun buildNotif(connected: Boolean): Notification {
@@ -841,3 +855,4 @@ class MihomoVpnService : VpnService() {
         try { VpnTileService.requestUpdate(this) } catch (_: Exception) {}
     }
 }
+
