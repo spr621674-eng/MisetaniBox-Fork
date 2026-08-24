@@ -57,6 +57,24 @@ object VpnPrefs {
     const val KEY_WATCHER_STARTED_VPN = "watcher_started_vpn"
 
     /**
+     * Режим маршрутизации (rule | global | direct) — зеркало JS localStorage 'mise_mode'.
+     * Источник истины для UI остаётся в WebView; сюда дублируется, потому что при
+     * запуске VPN из плитки/автовключения по приложению/автозапуска после перезагрузки
+     * интерфейс не открыт, и applyModeToCore() (JS, PATCH /configs) никогда не
+     * выполняется — режим «Глобально»/«Прямой» тихо откатывался на «Правила» при любом
+     * фоновом подключении. См. MihomoVpnService.applyRoutingMode().
+     */
+    const val KEY_ROUTING_MODE = "routing_mode"
+    fun routingMode(ctx: Context): String {
+        val m = prefs(ctx).getString(KEY_ROUTING_MODE, "rule") ?: "rule"
+        return if (m == "global" || m == "direct") m else "rule"
+    }
+    fun setRoutingMode(ctx: Context, mode: String) {
+        val m = if (mode == "global" || mode == "direct") mode else "rule"
+        prefs(ctx).edit().putString(KEY_ROUTING_MODE, m).apply()
+    }
+
+    /**
      * Выбранный пользователем «сервер по умолчанию» внутри основной группы (PROXY).
      * Раньше применялся ТОЛЬКО из открытого WebView (JS дёргал /proxies PUT после
      * подключения) — при автовключении по приложению, плитке или автозапуске после
@@ -218,3 +236,4 @@ object VpnPrefs {
         ctx.startService(i)
     }
 }
+
