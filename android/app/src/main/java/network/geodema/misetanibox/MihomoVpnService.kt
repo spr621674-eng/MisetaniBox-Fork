@@ -127,7 +127,13 @@ class MihomoVpnService : VpnService() {
                 val uas = intent.getStringArrayExtra(EXTRA_TEST_UAS) ?: arrayOf()
                 // Отдельный поток, не worker: это короткая фоновая проверка при
                 // добавлении подписки, ей не место в очереди реальных start/stop.
-                Thread { testUserAgents(url, hwid, uas) }.start()
+                // Раньше это был отдельный сырой Thread — он НЕ был синхронизирован
+                // с worker'ом, на котором крутятся startTunnel/stopTunnel/pauseTunnel.
+                // Если проверка UA и настоящее подключение пересекались по времени
+                // хоть на миг — оба потока лезли в одно и то же нативное ядро
+                // Mobilecore одновременно, отсюда и «то работает, то нет» без причины.
+                // Теперь тест идёт через ТОТ ЖЕ worker — гарантированно по очереди.
+                worker.execute { testUserAgents(url, hwid, uas) }
             }
             else -> {
                 val subUrl = intent?.getStringExtra(EXTRA_SUB_URL) ?: ""
@@ -179,6 +185,15 @@ class MihomoVpnService : VpnService() {
         if (running) return
         lastParams = LaunchParams(subUrl, hwid, userAgent, splitMode, splitApps, rules, chains, serviceGroups)
         try {
+            // Страховка: гарантированно гасим ядро перед стартом, даже если по нашим
+            // внутренним флагам оно и так должно быть остановлено. Ядро (Mobilecore) —
+            // общий нативный синглтон, которым пользуется и настоящее подключение, и
+            // проверка UA (testOneConfig); stop() на уже остановленном ядре — безопасный
+            // no-op, а вот пропуск этого шага иногда оставлял недоосвобождённым внешний
+            // контроллер (порт 127.0.0.1:9090) от предыдущего запуска — новый старт
+            // поднимался «наполовину»: список серверов виден, трафик не идёт.
+            try { Mobilecore.stop() } catch (_: Exception) {}
+            Thread.sleep(150)
             var config: String? = null
             var usedCache = false
             val fetched = Subscription.fetch(subUrl, hwid, userAgent)
@@ -303,10 +318,24 @@ class MihomoVpnService : VpnService() {
                 } else {
                     testUaBroadcast("fail", ua, "сервера не отвечают")
                 }
+                // Пауза между попытками разных UA: каждая проверка сама поднимает и
+                // гасит TUN-интерфейс и ядро — без паузы следующая попытка стартует
+                // раньше, чем система и ядро успевают полностью освободить ресурсы
+                // от предыдущей, отсюда и была непредсказуемость результатов.
+                Thread.sleep(400)
             }
         } finally {
             testingUa = false
+            // Та же страховка перед тем, как отдать управление обратно: следующим
+            // шагом почти всегда идёт настоящее подключение (пользователь жмёт
+            // «Подключиться» сразу после автоподбора) — даём ядру время улечься.
+            try { Mobilecore.stop() } catch (_: Exception) {}
+            Thread.sleep(300)
             testUaBroadcast("done", winner)
+            // Сервис был запущен через startService() специально ради этой проверки —
+            // без явного stopSelf() он остался бы «запущенным» вхолостую после того,
+            // как всё уже закончилось. Не гасим, если тем временем реально подключились.
+            if (!running) stopSelf()
         }
     }
 
@@ -327,6 +356,10 @@ class MihomoVpnService : VpnService() {
         // процесс приложения целиком (именно так тут и крашилось).
         var coreOwnsFd = false
         return try {
+            // Та же страховка, что и в startTunnel(): гасим ядро перед подъёмом
+            // тестового туннеля, даже если formally оно уже должно быть остановлено.
+            try { Mobilecore.stop() } catch (_: Exception) {}
+            Thread.sleep(150)
             val builder = Builder()
                 .setSession("MisetaniboxTest")
                 .setMtu(9000)
