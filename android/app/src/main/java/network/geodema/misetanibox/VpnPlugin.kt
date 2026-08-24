@@ -296,6 +296,15 @@ class VpnPlugin : Plugin() {
         call.resolve(JSObject().put("name", VpnPrefs.preferredServer(context) ?: ""))
     }
 
+    // Режим маршрутизации (rule/global/direct) — зеркало JS localStorage 'mise_mode',
+    // нужно нативной стороне для фоновых подключений (плитка/автовключение/бут), см.
+    // VpnPrefs.KEY_ROUTING_MODE.
+    @PluginMethod
+    fun setRoutingMode(call: PluginCall) {
+        VpnPrefs.setRoutingMode(context, call.getString("mode") ?: "rule")
+        call.resolve()
+    }
+
     // Запускает авто-подбор рабочего User-Agent для подписки: нативная сторона
     // по очереди реально проверяет каждый вариант (см. MihomoVpnService.testUserAgents).
     // Сам результат приходит НЕ из этого вызова, а позже через обычный vpnState-листенер
@@ -578,3 +587,4 @@ class VpnPlugin : Plugin() {
         }
     }
 }
+
