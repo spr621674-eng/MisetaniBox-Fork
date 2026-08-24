@@ -252,7 +252,7 @@ body{background:var(--bg);color:var(--fg);font-family:'Inter Tight',sans-serif;o
     <div class="row"><div class="grow"><div class="t">Подключать при разблокировке</div><div class="s">АВТОМАТИЧЕСКИ ПЕРЕПОДКЛЮЧАТЬСЯ ПОСЛЕ РАЗБЛОКИРОВКИ</div></div><button class="toggle" id="tgl-lock-reconnect" onclick="toggleLockReconnect(this)"></button></div>
     <div class="row" onclick="requestBatteryIgnore()"><div class="grow"><div class="t">Отключить оптимизацию батареи</div><div class="s" id="batt-sub">НУЖНО, ЧТОБЫ БЛОКИРОВКА ЭКРАНА РАБОТАЛА В ФОНЕ</div></div><span class="chev">›</span></div>
     <div class="row"><div class="grow"><div class="t">Экономичный режим<i class="info-i" onclick="event.stopPropagation();showInfo('Экономичный режим','Приложение реже опрашивает ядро о трафике и списке серверов, пока экран открыт — это снижает нагрузку на процессор и число фоновых будильников. Скорость и стабильность самого VPN-соединения не меняются, экономия только на служебных проверках интерфейса.')">ⓘ</i></div><div class="s">РЕЖЕ ОБНОВЛЯЕТ ИНТЕРФЕЙС — МЕНЬШЕ РАСХОД БАТАРЕИ</div></div><button class="toggle" id="tgl-battery-saver" onclick="toggleBatterySaver(this)"></button></div>
-    <div class="row" onclick="go('trigger')"><div class="grow"><div class="t">Автовключение по приложению<i class="info-i" onclick="event.stopPropagation();showInfo('Автовключение по приложению','Выберите приложение — VPN включится сам, когда вы его откроете, и выключится, когда вы из него выйдете (если вы не включали VPN вручную сами до этого). Работает через отдельное фоновое наблюдение за экраном, поэтому в шторке появится второе уведомление — так требует Android для любого фонового процесса, убрать его нельзя.')">ⓘ</i></div><div class="s" id="trigger-sub">ВЫКЛЮЧЕНО</div></div><span class="chev">›</span></div>
+    <div class="row" onclick="go('trigger')"><div class="grow"><div class="t">Автовключение по приложению<i class="info-i" onclick="event.stopPropagation();showInfo('Автовключение по приложению','Выберите приложение — VPN включится сам, когда вы его откроете, и выключится, когда вы из него выйдете (если вы не включали VPN вручную сами до этого). Это аналог автоматизаций «Команды» (Shortcuts) на iPhone — там похожее делается через триггер «Когда приложение открывается». Работает через отдельное фоновое наблюдение за экраном, поэтому в шторке появится второе уведомление — так требует Android для любого фонового процесса, убрать его нельзя.')">ⓘ</i></div><div class="s" id="trigger-sub">ВЫКЛЮЧЕНО</div></div><span class="chev">›</span></div>
     <div class="list-note" style="padding:10px 4px 0">Плитка в шторке и виджет на рабочем столе включают VPN одним тапом — добавь их через системное меню.</div>
 
     <div class="sec-title" style="font-size:22px;padding-top:22px">Внешний вид</div>
@@ -528,7 +528,6 @@ function dbg(msg){
 function copyDbg(){ try{ navigator.clipboard.writeText(dbgLines.join('\n')); toast('Лог скопирован'); }catch(e){} }
 window.addEventListener('error',e=>dbg('JS ERR: '+(e.message||e)));
 const API_BASE = 'http://127.0.0.1:9090';
-const GROUP = 'PROXY';
 function safeJson(s){ try{ return JSON.parse(s); }catch{ return null; } }
 // запрос к API ядра: через нативный плагин (без CORS/mixed-content), с фолбэком на fetch в вебе
 async function core(method, path, body){
@@ -947,10 +946,16 @@ async function waitForServers(){
     const r=await core('GET','/proxies');
     if(r.ok && r.data){
       if(!modeApplied){ modeApplied=true; applyModeToCore(); }
-      const g=r.data.proxies && r.data.proxies[GROUP];
+      // Раньше тут был захардкожен GROUP='PROXY' — в режиме «Глобально» реальная
+      // группа роутинга называется GLOBAL, а не PROXY, и предпочтительный сервер
+      // молча писался/читался не в ту группу. pickMainGroup() уже умеет это отличать
+      // (используется в renderProxies()) — берём ту же логику и здесь.
+      const P=r.data.proxies;
+      const activeGroup = P ? pickMainGroup(P, orderedGroups(P)) : null;
+      const g=activeGroup && P && P[activeGroup];
       if(g && g.all && g.all.length){
         const pref=getPreferred();
-        if(pref && g.all.includes(pref) && pref!==g.now){ await core('PUT','/proxies/'+encodeURIComponent(GROUP),{name:pref}); }
+        if(pref && g.all.includes(pref) && pref!==g.now){ await core('PUT','/proxies/'+encodeURIComponent(activeGroup),{name:pref}); }
         loadProxies();
         showServersBanner('updated','✓ Список серверов обновлён');
         setTimeout(hideServersBanner, 2500);
@@ -1049,6 +1054,11 @@ async function applyModeToCore(){
 async function cycleMode(){
   const i=MODES.findIndex(x=>x.v===curMode()); const next=MODES[(i+1)%MODES.length];
   localStorage.setItem('mise_mode', next.v); applyModeLabel();
+  // Раньше режим жил ТОЛЬКО в localStorage WebView — при запуске VPN из плитки/
+  // автовключения по приложению/автозапуска после перезагрузки (интерфейс не открыт)
+  // нативная сторона о выбранном режиме не знала вообще, и «Глобально» тихо
+  // откатывался на «Правила» при любом фоновом подключении. Дублируем в нативные prefs.
+  if(Vpn && Vpn.setRoutingMode){ try{ await Vpn.setRoutingMode({mode: next.v}); }catch(e){} }
   if(connected){
     await applyModeToCore();
     // список групп зависит от режима (в «Глобально» — только один селектор GLOBAL)
@@ -1443,6 +1453,13 @@ async function toggleTriggerApp(pkg){
   if(Vpn&&Vpn.setAppTriggers){ try{ await Vpn.setAppTriggers({pkgs:[...triggerSelected]}); }catch(e){ dbg('setAppTriggers err: '+e); } }
   refreshTriggerSub();
   renderTriggerAppList();
+  // Когда список становится пустым, нативная сторона (VpnPlugin.setAppTriggers) сама
+  // гасит AppWatcherService и сбрасывает watcherRunning — раньше тумблер «Автовключение»
+  // в интерфейсе оставался визуально включённым, хотя сервис уже не работал.
+  if(!triggerSelected.size){
+    const en=document.getElementById('tgl-trigger-enabled');
+    if(en) en.classList.remove('on');
+  }
   toast(triggerSelected.has(pkg) ? 'Добавлено: '+triggerLabelFor(pkg) : 'Убрано: '+triggerLabelFor(pkg));
 }
 async function toggleTriggerEnabled(btn){
@@ -1582,6 +1599,12 @@ function showUaTestModal(){
 }
 function closeUaTestModal(){
   const m=document.getElementById('ua-test-modal'); if(m) m.classList.add('hidden');
+  // Раньше крестик только прятал модалку, но не резолвил uaTestResolver — если
+  // нативная сторона не присылала "done" (зависший тест, убитый процесс и т.д.),
+  // await в autoDetectUa() висел вечно, а закрытая модалка потом внезапно
+  // "оживала" (toast/setUserAgent), когда done всё же приходил, иногда сильно
+  // позже, чем пользователь про это уже забыл. Теперь крестик — это отмена.
+  if(uaTestResolver){ const r=uaTestResolver; uaTestResolver=null; r(null); }
 }
 function handleUaTestEvent(kind, ua, extra){
   const el=document.getElementById('ua-test-hint-text');
@@ -1603,7 +1626,13 @@ async function autoDetectUa(url){
     toast('Автоподбор не запущен: '+(e&&e.message?e.message:e));
     return;
   }
-  const winner = await new Promise(res=>{ uaTestResolver=res; });
+  // Страховка на случай, если нативная сторона вообще не пришлёт "done" (например,
+  // процесс тестирования упал молча) — без этого промис висел бы бесконечно, даже
+  // крестик его не спасал бы, если сам обработчик не вызывался.
+  const winner = await new Promise(res=>{
+    uaTestResolver=res;
+    setTimeout(()=>{ if(uaTestResolver===res){ uaTestResolver=null; closeUaTestModal(); res(null); } }, 45000);
+  });
   if(winner){
     setUserAgent(winner);
     toast('Подобран формат подписки: '+uaLabel(winner));
@@ -1664,3 +1693,4 @@ const vs=document.getElementById('ver-sub'); if(vs) vs.textContent='MISETANIBOX 
 </script>
 </body>
 </html>
+
