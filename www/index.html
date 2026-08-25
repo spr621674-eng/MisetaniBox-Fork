@@ -147,6 +147,9 @@ body{background:var(--bg);color:var(--fg);font-family:'Inter Tight',sans-serif;o
 .chain-node.on{background:var(--ln)}
 .chain-node .t{font-size:14px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .rule-line{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--dim)}
+.list-note.collapsible .cn-text{display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;overflow:hidden}
+.list-note.collapsible.expanded .cn-text{-webkit-line-clamp:unset;overflow:visible}
+.cn-toggle{margin-top:8px;font-weight:700;color:var(--fg);cursor:pointer;letter-spacing:.06em}
 </style>
 </head>
 <body>
@@ -272,6 +275,10 @@ body{background:var(--bg);color:var(--fg);font-family:'Inter Tight',sans-serif;o
 
     <div class="sec-title" style="font-size:22px;padding-top:22px">Автономность</div>
     <div class="sec-sub">РАБОТАЕТ САМО, БЕЗ УЧАСТИЯ ПОЛЬЗОВАТЕЛЯ</div>
+    <div class="list-note collapsible" id="autonomy-note" style="padding:0 24px 14px">
+      <div class="cn-text">Чтобы «Автовключение по приложению» не отключалось само по себе, телефон должен разрешить приложению работать в фоне. Обычно это три шага в системных настройках: <b>добавить в автозапуск</b>, <b>разрешить работу в фоновом режиме</b> и <b>отключить оптимизацию батареи</b> именно для этого приложения. Кнопка ниже откроет нужный экран — но на разных прошивках это выглядит по-разному: где-то она сразу отключает оптимизацию, где-то переносит в раздел «Батарея», где там нужно вручную поставить «Без ограничений» и отдельно включить фоновый режим. Если после этого функция всё равно отключается сама — стоит донастроить всё то же самое вручную через Настройки телефона → Приложения → это приложение.</div>
+      <div class="cn-toggle" onclick="toggleNote('autonomy-note')">Показать полностью ▾</div>
+    </div>
     <div class="row"><div class="grow"><div class="t">Автозапуск</div><div class="s">ПОДНЯТЬ ТУННЕЛЬ ПРИ ВКЛЮЧЕНИИ УСТРОЙСТВА</div></div><button class="toggle" id="tgl-autostart" onclick="toggleAutostart(this)"></button></div>
     <div class="row"><div class="grow"><div class="t">Отключать при блокировке</div><div class="s">РАЗРЫВАТЬ ПРИ БЛОКИРОВКЕ ЭКРАНА</div></div><button class="toggle" id="tgl-lock-disconnect" onclick="toggleLockDisconnect(this)"></button></div>
     <div class="row"><div class="grow"><div class="t">Подключать при разблокировке</div><div class="s">АВТОМАТИЧЕСКИ ПЕРЕПОДКЛЮЧАТЬСЯ ПОСЛЕ РАЗБЛОКИРОВКИ</div></div><button class="toggle" id="tgl-lock-reconnect" onclick="toggleLockReconnect(this)"></button></div>
@@ -444,6 +451,15 @@ function toast(msg){
   }
   t.textContent=msg; t.style.opacity='1';
   clearTimeout(t._h); t._h=setTimeout(()=>{ t.style.opacity='0'; }, 3200);
+}
+// ---------- сворачиваемые длинные заметки (.list-note.collapsible) ----------
+// По умолчанию — 2 строки с многоточием, тап по подписи — разворачивает/сворачивает.
+// Универсально: применимо к любому .list-note.collapsible#id с .cn-text/.cn-toggle внутри.
+function toggleNote(id){
+  const el=document.getElementById(id); if(!el) return;
+  const open=el.classList.toggle('expanded');
+  const t=el.querySelector('.cn-toggle');
+  if(t) t.textContent = open ? 'Свернуть ▴' : 'Показать полностью ▾';
 }
 
 // ---------- определение страны по имени ноды ----------
@@ -1707,4 +1723,98 @@ function showUaTestModal(){
 function closeUaTestModal(){
   const m=document.getElementById('ua-test-modal'); if(m) m.classList.add('hidden');
   // Раньше крестик только прятал модалку, но не резолвил uaTestResolver — если
-  // нативная сторона не присылала "done" (зависший тес
+  // нативная сторона не присылала "done" (зависший тест, убитый процесс и т.д.),
+  // await в autoDetectUa() висел вечно, а закрытая модалка потом внезапно
+  // "оживала" (toast/setUserAgent), когда done всё же приходил, иногда сильно
+  // позже, чем пользователь про это уже забыл. Теперь крестик — это отмена.
+  if(uaTestResolver){ const r=uaTestResolver; uaTestResolver=null; r(null); }
+}
+function handleUaTestEvent(kind, ua, extra){
+  const el=document.getElementById('ua-test-hint-text');
+  if(kind==='trying' && el) el.textContent='Пробую формат «'+uaLabel(ua)+'»…';
+  else if(kind==='ok' && el) el.textContent='✓ подошёл формат «'+uaLabel(ua)+'»';
+  else if(kind==='fail' && el) el.textContent='✕ «'+uaLabel(ua)+'» не подошёл, пробую следующий…';
+  else if(kind==='done'){
+    closeUaTestModal();
+    if(uaTestResolver){ const r=uaTestResolver; uaTestResolver=null; r(ua||null); }
+  }
+}
+async function autoDetectUa(url){
+  if(!Vpn || !Vpn.testUserAgents) return;
+  showUaTestModal();
+  try{
+    await Vpn.testUserAgents({ url, hwid: getHwid(), uas: UA_PRESETS.map(p=>p.ua) });
+  }catch(e){
+    closeUaTestModal();
+    toast('Автоподбор не запущен: '+(e&&e.message?e.message:e));
+    return;
+  }
+  // Страховка на случай, если нативная сторона вообще не пришлёт "done" (например,
+  // процесс тестирования упал молча) — без этого промис висел бы бесконечно, даже
+  // крестик его не спасал бы, если сам обработчик не вызывался.
+  const winner = await new Promise(res=>{
+    uaTestResolver=res;
+    setTimeout(()=>{ if(uaTestResolver===res){ uaTestResolver=null; closeUaTestModal(); res(null); } }, 45000);
+  });
+  if(winner){
+    setUserAgent(winner);
+    toast('Подобран формат подписки: '+uaLabel(winner));
+  }else{
+    toast('Не удалось подобрать рабочий формат — выберите User-Agent вручную');
+  }
+  previewServers();
+}
+
+// ---------- трафик (реальный, из API ядра) ----------
+function fmtBytes(b){ if(b<1024) return b+' Б'; const u=['КБ','МБ','ГБ','ТБ']; let i=-1; do{ b/=1024; i++; }while(b>=1024&&i<u.length-1); return b.toFixed(b<10?1:0)+' '+u[i]; }
+let trafTimer=null, totalUp=0, totalDown=0;
+function startTraffic(){
+  if(trafTimer) return;
+  trafTimer=setInterval(async()=>{
+    if(!connected) return;
+    // /connections отдаёт весь список соединений — не дёргаем его, пока экран не виден
+    if(document.hidden) return;
+    const r=await core('GET','/connections');
+    if(r.ok && r.data){
+      totalUp=r.data.uploadTotal||0; totalDown=r.data.downloadTotal||0;
+      const el=document.getElementById('sess-data'); if(el) el.textContent=fmtBytes(totalUp+totalDown);
+    }
+  }, batterySaverOn?9000:3000);
+}
+function stopTraffic(){ clearInterval(trafTimer); trafTimer=null; const el=document.getElementById('sess-data'); if(el) el.textContent='0 Б'; }
+
+// ---------- тема (с сохранением) ----------
+function applyTheme(){ const t=localStorage.getItem('mise_theme'); document.documentElement.setAttribute('data-theme', t==='light'?'light':''); }
+function toggleTheme(){
+  const cur=localStorage.getItem('mise_theme')==='light'?'':'light';
+  localStorage.setItem('mise_theme', cur||'dark'); applyTheme();
+}
+
+applyTheme();
+applyAccent();
+renderAccents();
+applyHomeStyleUi();
+checkForUpdate(true);
+refreshPingSettingsSub();
+applyPresetUi();
+refreshChainsSub();
+applyModeLabel();
+refreshSplitSub();
+initAutostart();
+initLockBehavior();
+initBatteryStatus();
+initBatterySaver();
+initTrigger();
+applyUaSub();
+renderSubs();
+// одноразовая синхронизация уже выбранного сервера по умолчанию в нативные prefs —
+// для тех, кто выбрал его ещё до появления нативного переприменения (см. preSelect)
+if(Vpn && Vpn.setPreferredServer && getPreferred()){ Vpn.setPreferredServer({name:getPreferred()}).catch(()=>{}); }
+setUiConnected(false);
+// стартовая диагностика окружения
+dbg('старт '+BUILD+' | Cap='+(!!Cap)+' platform='+platform+' native='+isNative+' plugin='+(!!Vpn)+' reg='+(!!(Cap&&Cap.registerPlugin)));
+const vs=document.getElementById('ver-sub'); if(vs) vs.textContent='MISETANIBOX · '+BUILD.toUpperCase();
+</script>
+</body>
+</html>
+
