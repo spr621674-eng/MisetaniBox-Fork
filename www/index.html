@@ -237,6 +237,30 @@ body{background:var(--bg);color:var(--fg);font-family:'Inter Tight',sans-serif;o
     <div class="list-note">Цепочка появится в списке серверов как «🔗 имя» — выбери её, а внутри укажи выходной сервер. Применяется при следующем подключении.</div>
   </div>
 
+  <!-- ПРОВЕРКА СЕРВЕРОВ (ПИНГ) -->
+  <div class="view hidden" id="view-pingcfg">
+    <div class="back-row" onclick="go('settings')"><span class="bk">‹</span><div class="sec-title" style="margin:0">Проверка серверов</div></div>
+    <div class="sec-sub">КУДА И КАК ПРОВЕРЯТЬ СКОРОСТЬ ОТВЕТА</div>
+
+    <div class="sec-title" style="font-size:18px;padding-top:18px;padding-bottom:0">Адрес проверки</div>
+    <div class="row" onclick="setPingPreset('gstatic')"><div class="grow"><div class="t">gstatic (по умолчанию)</div><div class="s">http://www.gstatic.com/generate_204</div></div><span class="chev" id="pp-gstatic"></span></div>
+    <div class="row" onclick="setPingPreset('google')"><div class="grow"><div class="t">Google</div><div class="s">http://www.google.com/generate_204</div></div><span class="chev" id="pp-google"></span></div>
+    <div class="row" onclick="setPingPreset('cloudflare')"><div class="grow"><div class="t">Cloudflare</div><div class="s">http://cp.cloudflare.com/generate_204</div></div><span class="chev" id="pp-cloudflare"></span></div>
+    <div class="row" style="display:block">
+      <div class="grow" style="margin-bottom:10px"><div class="t">Свой адрес</div><div class="s">ПОЛНЫЙ URL, НАПРИМЕР http://example.com</div></div>
+      <input id="ping-custom-url" class="sub-input" type="text" inputmode="url" autocapitalize="off" autocorrect="off" spellcheck="false" placeholder="http://..." onblur="saveCustomPingUrl()">
+    </div>
+
+    <div class="sec-title" style="font-size:18px;padding-top:18px;padding-bottom:0">Тип проверки</div>
+    <div class="sub-seg" style="margin:10px 24px 0;width:calc(100% - 48px)">
+      <button class="sub-seg-btn" id="ping-mode-numeric" onclick="setPingMode('numeric')">HTTP GET · мс</button>
+      <button class="sub-seg-btn" id="ping-mode-strict" onclick="setPingMode('strict')">Жёсткая · да/нет</button>
+    </div>
+    <div class="list-note" id="ping-mode-hint">HTTP GET — показывает точное время ответа в миллисекундах через сам сервер.</div>
+
+    <div class="list-note">Пинг всегда идёт настоящим запросом через выбранный сервер (не просто «видит ли телефон интернет»), поэтому это надёжный показатель именно того, что сервер реально работает. Прямой TCP/ICMP-пинг к самому серверу (в обход прокси-протокола) в этой версии ядра недоступен — движок mihomo такого не отдаёт через свой API.</div>
+  </div>
+
   <!-- НАСТРОЙКИ -->
   <div class="view hidden" id="view-settings">
     <div class="sec-title">Настройки</div>
@@ -244,6 +268,7 @@ body{background:var(--bg);color:var(--fg);font-family:'Inter Tight',sans-serif;o
     <div class="row"><div class="grow"><div class="t">Режим TUN</div><div class="s">ПОЛНЫЙ ПЕРЕХВАТ ТРАФИКА</div></div><button class="toggle on" onclick="this.classList.toggle('on')"></button></div>
     <div class="row" onclick="go('apps')"><div class="grow"><div class="t">Раздельный туннель</div><div class="s" id="split-sub">ПО ПРИЛОЖЕНИЯМ · ВЫКЛ</div></div><span class="chev">›</span></div>
     <div class="row" onclick="go('chains')"><div class="grow"><div class="t">Цепочки</div><div class="s" id="chains-sub">НЕТ ЦЕПОЧЕК</div></div><span class="chev">›</span></div>
+    <div class="row" onclick="go('pingcfg')"><div class="grow"><div class="t">Проверка серверов</div><div class="s" id="pingcfg-sub">GSTATIC · HTTP GET</div></div><span class="chev">›</span></div>
 
     <div class="sec-title" style="font-size:22px;padding-top:22px">Автономность</div>
     <div class="sec-sub">РАБОТАЕТ САМО, БЕЗ УЧАСТИЯ ПОЛЬЗОВАТЕЛЯ</div>
@@ -499,6 +524,7 @@ function go(t){
   if(t==='chains') renderChains();
   if(t==='apps') openAppsScreen();
   if(t==='trigger') openTriggerScreen();
+  if(t==='pingcfg') openPingCfgScreen();
 }
 
 function showInfo(title, text){
@@ -815,7 +841,13 @@ function renderProxies(){
     return;
   }
   document.getElementById('servers-sub').textContent=order.length+' ГРУПП';
-  const ping=n=>{ const d=delays[n]; return d===undefined?'':(d>0?`<span class="ping" style="color:${pingColor(d)}">${d} мс</span>`:`<span class="ping" style="color:var(--bad)">—</span>`); };
+  const ping=n=>{
+    const d=delays[n]; if(d===undefined) return '';
+    if(pingMode()==='strict'){
+      return d>0 ? `<span class="ping" style="color:var(--ok)">✓ работает</span>` : `<span class="ping" style="color:var(--bad)">✕ недоступен</span>`;
+    }
+    return d>0?`<span class="ping" style="color:${pingColor(d)}">${d} мс</span>`:`<span class="ping" style="color:var(--bad)">—</span>`;
+  };
   const GROUP_TAG={selector:'СЕЛЕКТОР',urltest:'АВТО · ПО ПИНГУ',fallback:'ФОЛБЭК',loadbalance:'БАЛАНС',relay:'ЦЕПЬ'};
   let html=`<div class="row" onclick="pingAll()"><div class="grow"><div class="t">Проверить задержки</div><div class="s">ПИНГ ВСЕХ СЕРВЕРОВ</div></div><span class="chev">⟳</span></div>`;
   for(const gn of order){
@@ -972,24 +1004,99 @@ async function waitForServers(){
   const cached=cachedServers();
   showServersBanner('offline', cached ? ('Не удалось обновить — показаны данные от '+fmtTime(cached.ts)) : 'Не удалось получить список серверов');
 }
+// ---------- настройки проверки серверов (адрес + тип) ----------
+const PING_PRESETS={
+  gstatic:'http://www.gstatic.com/generate_204',
+  google:'http://www.google.com/generate_204',
+  cloudflare:'http://cp.cloudflare.com/generate_204',
+};
+function pingPreset(){ return localStorage.getItem('mise_ping_preset')||'gstatic'; }
+function pingCustomUrl(){ return localStorage.getItem('mise_ping_custom_url')||''; }
+function pingUrl(){
+  const custom=pingCustomUrl().trim();
+  if(custom) return custom;
+  return PING_PRESETS[pingPreset()]||PING_PRESETS.gstatic;
+}
+function pingMode(){ return localStorage.getItem('mise_ping_mode')||'numeric'; }
+function setPingPreset(p){
+  localStorage.setItem('mise_ping_preset', p);
+  localStorage.setItem('mise_ping_custom_url', ''); // пресет и свой адрес взаимоисключающие
+  const inp=document.getElementById('ping-custom-url'); if(inp) inp.value='';
+  refreshPingCfgUi(); refreshPingSettingsSub();
+}
+function saveCustomPingUrl(){
+  const v=(document.getElementById('ping-custom-url').value||'').trim();
+  localStorage.setItem('mise_ping_custom_url', v);
+  refreshPingCfgUi(); refreshPingSettingsSub();
+}
+function setPingMode(m){
+  localStorage.setItem('mise_ping_mode', m);
+  refreshPingCfgUi(); refreshPingSettingsSub();
+}
+function refreshPingSettingsSub(){
+  const el=document.getElementById('pingcfg-sub'); if(!el) return;
+  const custom=pingCustomUrl().trim();
+  const label = custom ? 'СВОЙ АДРЕС' : pingPreset().toUpperCase();
+  const modeLabel = pingMode()==='strict' ? 'ЖЁСТКАЯ ПРОВЕРКА' : 'HTTP GET';
+  el.textContent = label+' · '+modeLabel;
+}
+function openPingCfgScreen(){
+  const inp=document.getElementById('ping-custom-url'); if(inp) inp.value=pingCustomUrl();
+  refreshPingCfgUi();
+}
+function refreshPingCfgUi(){
+  const custom=pingCustomUrl().trim();
+  const preset=pingPreset();
+  for(const p of ['gstatic','google','cloudflare']){
+    const el=document.getElementById('pp-'+p);
+    if(el) el.textContent = (!custom && preset===p) ? '●' : '';
+  }
+  const mNum=document.getElementById('ping-mode-numeric'), mStrict=document.getElementById('ping-mode-strict');
+  const m=pingMode();
+  if(mNum) mNum.classList.toggle('active', m==='numeric');
+  if(mStrict) mStrict.classList.toggle('active', m==='strict');
+  const hint=document.getElementById('ping-mode-hint');
+  if(hint) hint.textContent = m==='strict'
+    ? 'Жёсткая проверка — просто «работает» или «недоступен», без миллисекунд. Полезно, если важен сам факт работоспособности, а не скорость.'
+    : 'HTTP GET — показывает точное время ответа в миллисекундах через сам сервер.';
+}
+
 async function selectNode(group, name){
   const r=await core('PUT','/proxies/'+encodeURIComponent(group),{name});
   if(r.ok){ toast(cleanName(name)); loadProxies(); }
   else toast('Не удалось выбрать (для авто-групп выбор недоступен)');
 }
+// Проверяет пачками, а не все ~180 серверов одним залпом: разом через локальный
+// TUN/gVisor стек — часть запросов раньше просто не успевала выполниться не
+// потому что сервер недоступен, а из-за перегрузки самого локального стека,
+// отсюда и были «непропинговавшиеся» сервера в списке.
+async function pingBatch(names, url, timeout, batchSize){
+  for(let i=0;i<names.length;i+=batchSize){
+    const chunk=names.slice(i,i+batchSize);
+    await Promise.all(chunk.map(async n=>{
+      try{
+        const rr=await core('GET','/proxies/'+encodeURIComponent(n)+'/delay?timeout='+timeout+'&url='+encodeURIComponent(url));
+        delays[n]=(rr.data && typeof rr.data.delay==='number')?rr.data.delay:-1;
+      }catch(e){ delays[n]=-1; }
+    }));
+    renderProxies(); // промежуточный рендер — видно прогресс, а не ждать всё сразу
+  }
+}
 async function pingAll(){
   if(!connected) return;
-  if(!_proxies){ const r=await core('GET','/proxies'); if(r.ok&&r.data) _proxies=r.data.proxies; }
+  // Всегда берём СВЕЖИЙ список у ядра прямо перед проверкой — если подписка
+  // недавно обновилась, старый _proxies мог не содержать новые узлы, и они
+  // просто не попадали в проверку вообще (оставались без пинга совсем).
+  const r=await core('GET','/proxies');
+  if(r.ok&&r.data) _proxies=r.data.proxies;
   const P=_proxies; if(!P){ toast('Нет данных'); return; }
   const skip=['DIRECT','REJECT','REJECT-DROP','PASS','COMPATIBLE','GLOBAL'];
   const leafs=[...new Set(Object.keys(P).filter(n=>!isGroup(P[n]) && !skip.includes(n)))];
   if(!leafs.length){ toast('Нет серверов'); return; }
-  toast('Проверка задержек…');
-  await Promise.all(leafs.map(async n=>{
-    const rr=await core('GET','/proxies/'+encodeURIComponent(n)+'/delay?timeout=3000&url='+encodeURIComponent('http://www.gstatic.com/generate_204'));
-    delays[n]=(rr.data && typeof rr.data.delay==='number')?rr.data.delay:-1;
-  }));
+  toast('Проверка '+leafs.length+' серверов…');
+  await pingBatch(leafs, pingUrl(), 3000, 12);
   renderProxies();
+  toast('Проверка завершена');
 }
 
 // ---------- подписка (модалка вместо prompt) ----------
@@ -1600,97 +1707,4 @@ function showUaTestModal(){
 function closeUaTestModal(){
   const m=document.getElementById('ua-test-modal'); if(m) m.classList.add('hidden');
   // Раньше крестик только прятал модалку, но не резолвил uaTestResolver — если
-  // нативная сторона не присылала "done" (зависший тест, убитый процесс и т.д.),
-  // await в autoDetectUa() висел вечно, а закрытая модалка потом внезапно
-  // "оживала" (toast/setUserAgent), когда done всё же приходил, иногда сильно
-  // позже, чем пользователь про это уже забыл. Теперь крестик — это отмена.
-  if(uaTestResolver){ const r=uaTestResolver; uaTestResolver=null; r(null); }
-}
-function handleUaTestEvent(kind, ua, extra){
-  const el=document.getElementById('ua-test-hint-text');
-  if(kind==='trying' && el) el.textContent='Пробую формат «'+uaLabel(ua)+'»…';
-  else if(kind==='ok' && el) el.textContent='✓ подошёл формат «'+uaLabel(ua)+'»';
-  else if(kind==='fail' && el) el.textContent='✕ «'+uaLabel(ua)+'» не подошёл, пробую следующий…';
-  else if(kind==='done'){
-    closeUaTestModal();
-    if(uaTestResolver){ const r=uaTestResolver; uaTestResolver=null; r(ua||null); }
-  }
-}
-async function autoDetectUa(url){
-  if(!Vpn || !Vpn.testUserAgents) return;
-  showUaTestModal();
-  try{
-    await Vpn.testUserAgents({ url, hwid: getHwid(), uas: UA_PRESETS.map(p=>p.ua) });
-  }catch(e){
-    closeUaTestModal();
-    toast('Автоподбор не запущен: '+(e&&e.message?e.message:e));
-    return;
-  }
-  // Страховка на случай, если нативная сторона вообще не пришлёт "done" (например,
-  // процесс тестирования упал молча) — без этого промис висел бы бесконечно, даже
-  // крестик его не спасал бы, если сам обработчик не вызывался.
-  const winner = await new Promise(res=>{
-    uaTestResolver=res;
-    setTimeout(()=>{ if(uaTestResolver===res){ uaTestResolver=null; closeUaTestModal(); res(null); } }, 45000);
-  });
-  if(winner){
-    setUserAgent(winner);
-    toast('Подобран формат подписки: '+uaLabel(winner));
-  }else{
-    toast('Не удалось подобрать рабочий формат — выберите User-Agent вручную');
-  }
-  previewServers();
-}
-
-// ---------- трафик (реальный, из API ядра) ----------
-function fmtBytes(b){ if(b<1024) return b+' Б'; const u=['КБ','МБ','ГБ','ТБ']; let i=-1; do{ b/=1024; i++; }while(b>=1024&&i<u.length-1); return b.toFixed(b<10?1:0)+' '+u[i]; }
-let trafTimer=null, totalUp=0, totalDown=0;
-function startTraffic(){
-  if(trafTimer) return;
-  trafTimer=setInterval(async()=>{
-    if(!connected) return;
-    // /connections отдаёт весь список соединений — не дёргаем его, пока экран не виден
-    if(document.hidden) return;
-    const r=await core('GET','/connections');
-    if(r.ok && r.data){
-      totalUp=r.data.uploadTotal||0; totalDown=r.data.downloadTotal||0;
-      const el=document.getElementById('sess-data'); if(el) el.textContent=fmtBytes(totalUp+totalDown);
-    }
-  }, batterySaverOn?9000:3000);
-}
-function stopTraffic(){ clearInterval(trafTimer); trafTimer=null; const el=document.getElementById('sess-data'); if(el) el.textContent='0 Б'; }
-
-// ---------- тема (с сохранением) ----------
-function applyTheme(){ const t=localStorage.getItem('mise_theme'); document.documentElement.setAttribute('data-theme', t==='light'?'light':''); }
-function toggleTheme(){
-  const cur=localStorage.getItem('mise_theme')==='light'?'':'light';
-  localStorage.setItem('mise_theme', cur||'dark'); applyTheme();
-}
-
-applyTheme();
-applyAccent();
-renderAccents();
-applyHomeStyleUi();
-checkForUpdate(true);
-applyPresetUi();
-refreshChainsSub();
-applyModeLabel();
-refreshSplitSub();
-initAutostart();
-initLockBehavior();
-initBatteryStatus();
-initBatterySaver();
-initTrigger();
-applyUaSub();
-renderSubs();
-// одноразовая синхронизация уже выбранного сервера по умолчанию в нативные prefs —
-// для тех, кто выбрал его ещё до появления нативного переприменения (см. preSelect)
-if(Vpn && Vpn.setPreferredServer && getPreferred()){ Vpn.setPreferredServer({name:getPreferred()}).catch(()=>{}); }
-setUiConnected(false);
-// стартовая диагностика окружения
-dbg('старт '+BUILD+' | Cap='+(!!Cap)+' platform='+platform+' native='+isNative+' plugin='+(!!Vpn)+' reg='+(!!(Cap&&Cap.registerPlugin)));
-const vs=document.getElementById('ver-sub'); if(vs) vs.textContent='MISETANIBOX · '+BUILD.toUpperCase();
-</script>
-</body>
-</html>
-
+  // нативная сторона не присылала "done" (зависший тес
