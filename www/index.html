@@ -825,8 +825,13 @@ function orderedGroups(P){
   // В режиме «Глобально» правила не участвуют — весь трафик идёт через один
   // выбранный узел из служебной группы GLOBAL, остальные группы не имеют смысла.
   if(curMode()==='global' && P['GLOBAL']) return ['GLOBAL'];
-  // прячем GLOBAL и группы с hidden:true (mihomo помечает служебные — как во FlClash)
-  const names=Object.keys(P).filter(n=>isGroup(P[n]) && n!=='GLOBAL' && !P[n].hidden);
+  // прячем GLOBAL и группы с hidden:true (mihomo помечает служебные — как во FlClash),
+  // а также группы-политики выбора DNS-апстрима (DNS-SELECTOR и т.п. — реальная
+  // подписка присылает их наравне с обычными группами серверов, хотя это не сервер
+  // трафика, а внутренний роутинг DNS-запросов панели). Именно они и были частью
+  // «мусора» в списке — сервер для подключения там выбрать всё равно нельзя.
+  const isDnsGroup=n=>/(^|[^a-zа-яё])dns([^a-zа-яё]|$)/i.test(n);
+  const names=Object.keys(P).filter(n=>isGroup(P[n]) && n!=='GLOBAL' && !P[n].hidden && !isDnsGroup(n));
   const gl=(P['GLOBAL']&&Array.isArray(P['GLOBAL'].all))?P['GLOBAL'].all.filter(n=>names.includes(n)):[];
   const order=gl.slice();
   for(const n of names) if(!order.includes(n)) order.push(n);
