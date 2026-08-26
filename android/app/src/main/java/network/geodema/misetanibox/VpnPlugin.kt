@@ -400,6 +400,35 @@ class VpnPlugin : Plugin() {
     // Наружу отдаём УЖЕ сконвертированный YAML: интерфейсу не нужно знать, что
     // панель прислала — Xray JSON, список ссылок или готовый mihomo-конфиг. Формат
     // и счётчики уходят рядом, чтобы их было видно в подписках и в диагностике.
+    // Настоящий TCP-пинг: голое соединение НАПРЯМУЮ к серверу (host:port берутся из
+    // тела подписки на JS-стороне — mihomo через свой API их сознательно не отдаёт).
+    // В обход VPN-туннеля и прокси-протокола совсем — это отдельный от HTTP GET/
+    // «жёсткой» проверки тип, показывает чистую сетевую задержку до узла, а не то,
+    // работает ли на нём прокси.
+    @PluginMethod
+    fun tcpPing(call: PluginCall) {
+        val host = call.getString("host") ?: ""
+        val port = call.getInt("port") ?: -1
+        val timeoutMs = call.getInt("timeoutMs") ?: 3000
+        if (host.isBlank() || port <= 0) {
+            call.resolve(JSObject().put("delay", -1))
+            return
+        }
+        Thread {
+            var delay = -1
+            try {
+                val start = System.currentTimeMillis()
+                java.net.Socket().use { s ->
+                    s.connect(java.net.InetSocketAddress(host, port), timeoutMs)
+                }
+                delay = (System.currentTimeMillis() - start).toInt()
+            } catch (_: Exception) {
+                delay = -1
+            }
+            call.resolve(JSObject().put("delay", delay))
+        }.start()
+    }
+
     @PluginMethod
     fun fetchSub(call: PluginCall) {
         val url = call.getString("url") ?: ""

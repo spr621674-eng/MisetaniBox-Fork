@@ -500,6 +500,22 @@ class MihomoVpnService : VpnService() {
     // не открыт, и ядро молча оставалось на своём дефолтном узле группы PROXY вместо
     // реально выбранного пользователем. Тоже на отдельном потоке — не мешает очереди
     // воркера и не блокирует последующие команды.
+    // Портирован из pickMainGroup() в index.html — раньше тут (и в schedulePingLoop)
+    // было захардкожено имя группы "PROXY", а у подписок, где основная группа
+    // называется иначе ("Зарубежные сайты", "AI" и т.п. — так у многих реальных
+    // панелей), proxies.optJSONObject("PROXY") молча возвращал null, и вся логика
+    // ниже (предпочтительный сервер, пинг в уведомлении) переставала работать
+    // без единой ошибки в логе. Тот же эвристический поиск, что и в JS.
+    private fun pickMainGroupName(proxies: org.json.JSONObject?): String? {
+        if (proxies == null) return null
+        if (VpnPrefs.routingMode(this) == "global" && proxies.has("GLOBAL")) return "GLOBAL"
+        val keys = proxies.keys().asSequence().toList()
+        val groups = keys.filter { it != "GLOBAL" && proxies.optJSONObject(it)?.has("all") == true }
+        val selectors = groups.filter { proxies.optJSONObject(it)?.optString("type", "").equals("selector", ignoreCase = true) }
+        val re = Regex("зарубеж|proxy|select|fast|быстр|основ|main", RegexOption.IGNORE_CASE)
+        return selectors.firstOrNull { re.containsMatchIn(it) } ?: selectors.firstOrNull() ?: groups.firstOrNull()
+    }
+
     private fun applyPreferredServer() {
         Thread {
             try {
@@ -523,10 +539,7 @@ class MihomoVpnService : VpnService() {
                 }
                 val pref = VpnPrefs.preferredServer(this)
                 val proxies = proxiesJson?.optJSONObject("proxies")
-                // В режиме "Глобально" реальная группа роутинга — GLOBAL, а не PROXY
-                // (см. pickMainGroup() в index.html) — раньше здесь было захардкожено
-                // "PROXY", и предпочтительный сервер в Global-режиме применялся не туда.
-                val groupName = if (VpnPrefs.routingMode(this) == "global" && proxies?.has("GLOBAL") == true) "GLOBAL" else "PROXY"
+                val groupName = pickMainGroupName(proxies) ?: "PROXY"
                 val group = proxies?.optJSONObject(groupName)
                 val all = group?.optJSONArray("all")
                 if (!pref.isNullOrBlank() && all != null) {
@@ -911,8 +924,8 @@ class MihomoVpnService : VpnService() {
                             disconnect(); t
                         }
                         val proxies = body?.let { org.json.JSONObject(it).optJSONObject("proxies") }
-                        val groupName = if (VpnPrefs.routingMode(this) == "global" && proxies?.has("GLOBAL") == true) "GLOBAL" else "PROXY"
-                        val now = proxies?.optJSONObject(groupName)?.optString("now")
+                        val groupName = pickMainGroupName(proxies)
+                        val now = groupName?.let { proxies?.optJSONObject(it)?.optString("now") }
                         if (!now.isNullOrBlank()) {
                             val du = java.net.URL("http://127.0.0.1:9090/proxies/" + java.net.URLEncoder.encode(now, "UTF-8") + "/delay?timeout=3000&url=" + java.net.URLEncoder.encode("http://www.gstatic.com/generate_204", "UTF-8"))
                             val dc = du.openConnection() as java.net.HttpURLConnection
