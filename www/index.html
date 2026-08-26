@@ -284,6 +284,7 @@ body{background:var(--bg);color:var(--fg);font-family:'Inter Tight',sans-serif;o
     <div class="row"><div class="grow"><div class="t">Подключать при разблокировке</div><div class="s">АВТОМАТИЧЕСКИ ПЕРЕПОДКЛЮЧАТЬСЯ ПОСЛЕ РАЗБЛОКИРОВКИ</div></div><button class="toggle" id="tgl-lock-reconnect" onclick="toggleLockReconnect(this)"></button></div>
     <div class="row" onclick="requestBatteryIgnore()"><div class="grow"><div class="t">Отключить оптимизацию батареи</div><div class="s" id="batt-sub">НУЖНО, ЧТОБЫ БЛОКИРОВКА ЭКРАНА РАБОТАЛА В ФОНЕ</div></div><span class="chev">›</span></div>
     <div class="row"><div class="grow"><div class="t">Экономичный режим<i class="info-i" onclick="event.stopPropagation();showInfo('Экономичный режим','Приложение реже опрашивает ядро о трафике и списке серверов, пока экран открыт — это снижает нагрузку на процессор и число фоновых будильников. Скорость и стабильность самого VPN-соединения не меняются, экономия только на служебных проверках интерфейса.')">ⓘ</i></div><div class="s">РЕЖЕ ОБНОВЛЯЕТ ИНТЕРФЕЙС — МЕНЬШЕ РАСХОД БАТАРЕИ</div></div><button class="toggle" id="tgl-battery-saver" onclick="toggleBatterySaver(this)"></button></div>
+    <div class="row"><div class="grow"><div class="t">Пинг в уведомлении<i class="info-i" onclick="event.stopPropagation();showInfo('Пинг в уведомлении','Уведомление о работающем VPN в шторке раз в 20 секунд показывает реальный пинг активного сервера и даёт кнопку «Отключить» без открытия приложения. Само уведомление убрать нельзя — это требование Android для любого VPN-сервиса, но замер пинга — отдельная периодическая проверка, и её можно выключить.')">ⓘ</i></div><div class="s">РЕАЛЬНЫЙ ПИНГ И КНОПКА «ОТКЛЮЧИТЬ» В ШТОРКЕ</div></div><button class="toggle" id="tgl-notif-ping" onclick="toggleNotifPing(this)"></button></div>
     <div class="row" onclick="go('trigger')"><div class="grow"><div class="t">Автовключение по приложению<i class="info-i" onclick="event.stopPropagation();showInfo('Автовключение по приложению','Выберите приложение — VPN включится сам, когда вы его откроете, и выключится, когда вы из него выйдете (если вы не включали VPN вручную сами до этого). Это аналог автоматизаций «Команды» (Shortcuts) на iPhone — там похожее делается через триггер «Когда приложение открывается». Работает через отдельное фоновое наблюдение за экраном, поэтому в шторке появится второе уведомление — так требует Android для любого фонового процесса, убрать его нельзя.')">ⓘ</i></div><div class="s" id="trigger-sub">ВЫКЛЮЧЕНО</div></div><span class="chev">›</span></div>
     <div class="list-note" style="padding:10px 4px 0">Плитка в шторке и виджет на рабочем столе включают VPN одним тапом — добавь их через системное меню.</div>
 
@@ -367,6 +368,7 @@ body{background:var(--bg);color:var(--fg);font-family:'Inter Tight',sans-serif;o
       <div id="ua-presets" class="chain-nodes"></div>
       <div class="sub-modal-hint">Или свой</div>
       <input id="ua-input" class="sub-input" type="text" autocapitalize="off" autocorrect="off" spellcheck="false" placeholder="clash-meta/mihomo">
+      <div class="row" style="padding:12px 0 0;border-top:none" onclick="closeUaModal();autoDetectUaManual()"><div class="grow"><div class="t">⟳ Подобрать автоматически</div><div class="s">РЕАЛЬНАЯ ПРОВЕРКА КАЖДОГО ВАРИАНТА, НУЖЕН ОТКЛЮЧЁННЫЙ VPN</div></div></div>
       <div class="sub-modal-btns">
         <button class="sub-btn ghost" onclick="closeUaModal()">Отмена</button>
         <button class="sub-btn primary" onclick="saveUaModal()">Сохранить</button>
@@ -811,7 +813,13 @@ function fmtTime(ts){
 }
 function cachedServers(){
   const c=safeJson(localStorage.getItem('mise_lastServers'));
-  return (c && Array.isArray(c.all) && c.all.length) ? c : null;
+  if(!c || !Array.isArray(c.all) || !c.all.length) return null;
+  // Кэш мог быть сохранён ДО того, как появился фильтр мусорных DNS-псевдоузлов —
+  // без этого старый мусор продолжал бы висеть в localStorage и показываться
+  // здесь бесконечно, даже после того как сам парсер уже почищен.
+  const clean=filterJunkNames(c.all);
+  if(!clean.length) return null;
+  return clean.length===c.all.length ? c : {...c, all:clean};
 }
 
 // ---------- классические группы-селекторы (как FlClash/mihomo) ----------
@@ -915,15 +923,17 @@ function parseClashNames(text){
   // тоже есть слово name, и на границе после дефиса оно матчилось как отдельный ключ.
   const names=[]; const re=/(?:^|\n)[ \t]*(?:-[ \t]*\{?[ \t]*)?name[ \t]*:[ \t]*(['"]?)([^'"\n,}]+)\1/g; let x;
   while((x=re.exec(block))){ const n=x[2].trim(); if(n) names.push(n); }
-  // У некоторых подписок в статическом теле лежат не реальные сервера, а служебные
-  // псевдоузлы для роутинга DNS-запросов (просто политики DIRECT/REJECT под разными
-  // именами, иногда с «&параметрами» в имени) — они мусор для превью, а не то, что
-  // человек должен выбирать как «сервер». Настоящие сервера в таких подписках вообще
-  // отсутствуют в статическом теле — ядро подгружает их само через proxy-providers
-  // уже ПОСЛЕ подключения, увидеть их заранее в превью нельзя в принципе.
+  return filterJunkNames(names);
+}
+// Служебные DNS-псевдоузлы (просто политики DIRECT/REJECT под разными именами,
+// иногда с «&параметрами») — мусор для превью, не настоящие сервера. Вынесено
+// отдельно, потому что применяется не только к свежескачанному списку, но и к
+// уже ЗАКЭШИРОВАННОМУ (см. cachedServers()) — иначе то, что было сохранено в
+// localStorage ДО этого фильтра, продолжало бы показываться из кэша как есть.
+function filterJunkNames(names){
   const JUNK=new Set(['DIRECT','REJECT','REJECT-DROP','PASS','COMPATIBLE','GLOBAL','DNS-SELECTOR']);
   const clean=names.filter(n=>{
-    const up=n.trim().toUpperCase();
+    const up=String(n).trim().toUpperCase();
     if(JUNK.has(up)) return false;
     if(up.startsWith('DIRECT&')||up.startsWith('REJECT&')||up.startsWith('DNS-SELECTOR&')) return false;
     return true;
@@ -1337,9 +1347,8 @@ function openChainModal(){
 }
 function closeChainModal(){ document.getElementById('chain-modal').classList.add('hidden'); }
 function chainNodeSource(){
-  // список серверов кэшируется как {all:[...], now:"..."}
-  const c = safeJson(localStorage.getItem('mise_lastServers'));
-  return (c && Array.isArray(c.all)) ? c.all : [];
+  const c = cachedServers();
+  return c ? c.all : [];
 }
 function renderChainNodes(){
   const box=document.getElementById('chain-nodes'); if(!box) return;
@@ -1567,6 +1576,21 @@ async function toggleBatterySaver(btn){
   toast(on?'Экономичный режим включён':'Экономичный режим выключен');
 }
 
+// ---------- пинг в уведомлении о работе VPN ----------
+async function initNotifPing(){
+  if(!Vpn||!Vpn.getNotifPing) return;
+  try{
+    const r=await Vpn.getNotifPing();
+    const b=document.getElementById('tgl-notif-ping'); if(b) b.classList.toggle('on', !!(r&&r.on));
+  }catch(e){}
+}
+async function toggleNotifPing(btn){
+  const on=!btn.classList.contains('on');
+  btn.classList.toggle('on',on);
+  if(Vpn&&Vpn.setNotifPing){ try{ await Vpn.setNotifPing({on}); }catch(e){ dbg('setNotifPing err: '+e); } }
+  toast(on?'Пинг в уведомлении включён':'Пинг в уведомлении выключен');
+}
+
 // ---------- автовключение VPN по приложению ----------
 const triggerSelected=new Set();
 async function initTrigger(){
@@ -1791,6 +1815,17 @@ function handleUaTestEvent(kind, ua, extra){
     if(uaTestResolver){ const r=uaTestResolver; uaTestResolver=null; r(ua||null); }
   }
 }
+// Раньше автоподбор запускался ТОЛЬКО один раз — в момент самого первого добавления
+// новой ссылки (см. saveSubModal). Если подписка уже была добавлена, повторно
+// запустить проверку было неоткуда — окно просто больше никогда не появлялось.
+// Эта функция — точка входа для ручного перезапуска в любой момент, для активной
+// подписки, без привязки к моменту её добавления.
+function autoDetectUaManual(){
+  const url=getSubUrl();
+  if(!url){ toast('Сначала добавьте подписку'); return; }
+  if(connected){ toast('Сначала отключите VPN — проверка поднимает свой тестовый туннель'); return; }
+  autoDetectUa(url);
+}
 async function autoDetectUa(url){
   if(!Vpn || !Vpn.testUserAgents) return;
   showUaTestModal();
@@ -1856,6 +1891,7 @@ initAutostart();
 initLockBehavior();
 initBatteryStatus();
 initBatterySaver();
+initNotifPing();
 initTrigger();
 applyUaSub();
 renderSubs();
