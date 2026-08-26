@@ -28,6 +28,11 @@ class MihomoVpnService : VpnService() {
     private val worker = java.util.concurrent.Executors.newSingleThreadExecutor()
     private var netCallback: android.net.ConnectivityManager.NetworkCallback? = null
     @Volatile private var running = false
+    // Текущий пинг активного узла для уведомления в шторке — обновляется отдельным
+    // циклом (см. schedulePingLoop) и просто читается при перерисовке уведомления,
+    // без блокирующих сетевых вызовов прямо в buildNotif().
+    @Volatile private var lastPingText: String? = null
+    @Volatile private var pingLoopActive = false
     // Защита stopTunnel() от повторного/параллельного входа — раньше двойной вызов
     // (например, из ACTION_STOP и следом из onDestroy) слал два broadcast("disconnected")
     // и дважды дёргал stopForeground/stopSelf.
@@ -52,6 +57,9 @@ class MihomoVpnService : VpnService() {
         const val ACTION_START = "network.geodema.misetanibox.START"
         const val ACTION_STOP = "network.geodema.misetanibox.STOP"
         const val ACTION_TEST_UA = "network.geodema.misetanibox.TEST_UA"
+        /** Немедленно перерисовать уведомление — например, сразу после переключения
+         * тумблера «Пинг в уведомлении», не дожидаясь следующего тика цикла. */
+        const val ACTION_REFRESH_NOTIF = "network.geodema.misetanibox.REFRESH_NOTIF"
         const val EXTRA_TEST_URL = "test_url"
         const val EXTRA_TEST_HWID = "test_hwid"
         const val EXTRA_TEST_UAS = "test_uas"
@@ -120,6 +128,17 @@ class MihomoVpnService : VpnService() {
         when (intent?.action) {
             ACTION_STOP -> {
                 worker.execute { stopTunnel() }
+            }
+            ACTION_REFRESH_NOTIF -> {
+                // Если сервис не был реально запущен (VPN не подключён), это просто
+                // случайно поднятый пустой инстанс сервиса — тут же его и гасим, чтобы
+                // не оставить висеть незапущенный foreground-сервис без уведомления.
+                if (running) {
+                    if (VpnPrefs.isNotifPingEnabled(this) && !pingLoopActive) schedulePingLoop()
+                    updateNotif(connected = true)
+                } else {
+                    stopSelf()
+                }
             }
             ACTION_TEST_UA -> {
                 val url = intent.getStringExtra(EXTRA_TEST_URL) ?: ""
@@ -262,10 +281,12 @@ class MihomoVpnService : VpnService() {
             watchNetworkChanges()
             running = true
             isRunning = true
+            lastPingText = null
             updateNotif(connected = true)
             broadcast("connected", "")
             applyRoutingMode()
             applyPreferredServer()
+            schedulePingLoop()
             scheduleDiagBroadcast()
         } catch (e: Exception) {
             broadcast("error", e.message ?: "неизвестная ошибка запуска")
@@ -822,13 +843,27 @@ class MihomoVpnService : VpnService() {
             this, 0, Intent(this, MainActivity::class.java),
             PendingIntent.FLAG_IMMUTABLE
         )
-        return Notification.Builder(this, CHANNEL_ID)
+        val text = when {
+            !connected -> "На паузе — экран заблокирован"
+            !VpnPrefs.isNotifPingEnabled(this) -> "Туннель активен"
+            lastPingText != null -> "Туннель активен · пинг ${lastPingText}"
+            else -> "Туннель активен"
+        }
+        val stopPi = PendingIntent.getService(
+            this, 1, Intent(this, MihomoVpnService::class.java).apply { action = ACTION_STOP },
+            PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
+        )
+        val b = Notification.Builder(this, CHANNEL_ID)
             .setContentTitle("Misetanibox")
-            .setContentText(if (connected) "Туннель активен" else "На паузе — экран заблокирован")
+            .setContentText(text)
             .setSmallIcon(R.mipmap.ic_launcher)
             .setContentIntent(pi)
             .setOngoing(true)
-            .build()
+        // Кнопка «Отключить» видна сразу в шторке, без разворачивания приложения —
+        // именно ACTION_STOP, тот же путь, что и у плитки/виджета, никакой отдельной
+        // логики отключения не заводим.
+        if (connected) b.addAction(Notification.Action.Builder(null, "Отключить", stopPi).build())
+        return b.build()
     }
 
     private fun startForegroundNotif() {
@@ -845,6 +880,61 @@ class MihomoVpnService : VpnService() {
         nm.notify(NOTIF_ID, buildNotif(connected))
     }
 
+    // Раньше уведомление в шторке ничего не говорило про пинг и не давало отключиться
+    // без открытия приложения — только «Туннель активен»/тап открывал MainActivity.
+    // Цикл сам разбирается, какой узел сейчас активен (текущий выбор основной группы
+    // через тот же приоритет GLOBAL/PROXY, что и applyPreferredServer), делает по нему
+    // настоящий delay-запрос ядра (не просто «есть сеть») и обновляет уведомление.
+    // Живёт, пока идёт реальное подключение — гасится сам в конце пула.
+    private fun schedulePingLoop() {
+        if (pingLoopActive) return
+        pingLoopActive = true
+        Thread {
+            try {
+                // небольшая пауза перед первым замером — ядру нужно время подняться
+                // и подгрузить подписку, иначе первые несколько попыток впустую
+                Thread.sleep(8000)
+                while (running) {
+                    if (!VpnPrefs.isNotifPingEnabled(this)) {
+                        // Тумблер выключили (возможно, прямо посреди этого цикла) —
+                        // сбрасываем текст и полностью останавливаем поток, а не просто
+                        // пропускаем итерацию. ACTION_REFRESH_NOTIF перезапустит цикл
+                        // заново, если тумблер включат обратно без переподключения.
+                        if (lastPingText != null) { lastPingText = null; if (running) updateNotif(connected = true) }
+                        return@Thread
+                    }
+                    try {
+                        val proxiesUrl = java.net.URL("http://127.0.0.1:9090/proxies")
+                        val body = (proxiesUrl.openConnection() as java.net.HttpURLConnection).run {
+                            connectTimeout = 1500; readTimeout = 2000
+                            val t = if (responseCode in 200..299) inputStream.bufferedReader().use { it.readText() } else null
+                            disconnect(); t
+                        }
+                        val proxies = body?.let { org.json.JSONObject(it).optJSONObject("proxies") }
+                        val groupName = if (VpnPrefs.routingMode(this) == "global" && proxies?.has("GLOBAL") == true) "GLOBAL" else "PROXY"
+                        val now = proxies?.optJSONObject(groupName)?.optString("now")
+                        if (!now.isNullOrBlank()) {
+                            val du = java.net.URL("http://127.0.0.1:9090/proxies/" + java.net.URLEncoder.encode(now, "UTF-8") + "/delay?timeout=3000&url=" + java.net.URLEncoder.encode("http://www.gstatic.com/generate_204", "UTF-8"))
+                            val dc = du.openConnection() as java.net.HttpURLConnection
+                            dc.connectTimeout = 1500; dc.readTimeout = 3500
+                            val delayBody = if (dc.responseCode in 200..299) dc.inputStream.bufferedReader().use { it.readText() } else null
+                            dc.disconnect()
+                            val delay = delayBody?.let { org.json.JSONObject(it).optInt("delay", -1) } ?: -1
+                            lastPingText = if (delay > 0) "${delay} мс" else "нет ответа"
+                        } else {
+                            lastPingText = null
+                        }
+                    } catch (_: Exception) { lastPingText = null }
+                    if (running) updateNotif(connected = true)
+                    Thread.sleep(20_000)
+                }
+            } catch (_: Exception) {
+            } finally {
+                pingLoopActive = false
+            }
+        }.start()
+    }
+
     private fun broadcast(state: String, message: String) {
         val i = Intent("network.geodema.misetanibox.VPN_STATE")
         i.setPackage(packageName)
@@ -855,4 +945,3 @@ class MihomoVpnService : VpnService() {
         try { VpnTileService.requestUpdate(this) } catch (_: Exception) {}
     }
 }
-

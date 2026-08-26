@@ -1,0 +1,1908 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Misetanibox</title>
+<script src="capacitor.js"></script>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter+Tight:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#0A0A0A; --fg:#F4F4F2;
+  --dim:rgba(244,244,242,.64); --mut:rgba(244,244,242,.4); --ln:rgba(244,244,242,.16);
+  --ok:oklch(.76 .17 150); --mid:oklch(.8 .15 85); --bad:oklch(.68 .21 27);
+  --rad:6px;
+}
+:root[data-theme=light]{
+  --bg:#F4F4F2; --fg:#0A0A0A;
+  --dim:rgba(10,10,10,.64); --mut:rgba(10,10,10,.4); --ln:rgba(10,10,10,.16);
+}
+*{margin:0;padding:0;box-sizing:border-box}
+html,body{height:100%}
+body{background:var(--bg);color:var(--fg);font-family:'Inter Tight',sans-serif;overflow:hidden}
+.app{display:flex;flex-direction:column;height:100dvh}
+.mono{font-family:'JetBrains Mono',monospace}
+.head{display:flex;align-items:center;justify-content:space-between;padding:10px 24px 0;flex:none}
+.brand{display:flex;align-items:center;gap:9px}
+.brand img{width:22px;height:22px;border-radius:6px;border:1px solid var(--ln)}
+.brand-col{display:flex;flex-direction:column;gap:2px;line-height:1}
+.brand span{font-weight:700;font-size:12px;letter-spacing:.24em}
+.brand-face{font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:0;color:var(--mut);transition:color .25s}
+.brand-face.online{color:var(--ok)}
+.brand-face.pop{animation:face-pop .55s cubic-bezier(.34,1.56,.64,1)}
+@keyframes face-pop{0%{transform:scale(.6);opacity:.4}50%{transform:scale(1.3)}100%{transform:scale(1)}}
+.head-r{display:flex;align-items:center;gap:14px}
+.icon-btn{width:32px;height:32px;display:flex;align-items:center;justify-content:center;border:1px solid var(--ln);border-radius:var(--rad);font-size:13px;color:var(--dim);background:none;cursor:pointer}
+.view{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch}
+.view::-webkit-scrollbar{display:none}
+
+/* ГЛАВНАЯ */
+.status-blk{padding:34px 24px 0}
+.status-lbl{font-family:'JetBrains Mono',monospace;font-size:9.5px;letter-spacing:.2em;color:var(--mut)}
+.status-val{font-family:'JetBrains Mono',monospace;font-size:12px;letter-spacing:.14em;color:var(--dim);margin-top:8px}
+.connect{margin-top:26px;border-top:1px solid var(--fg);border-bottom:1px solid var(--fg);padding:24px;cursor:pointer;user-select:none}
+.connect.busy{opacity:.55;pointer-events:none}
+.connect .big{font-weight:700;font-size:72px;line-height:.95;letter-spacing:-.02em}
+.connect .sub{display:flex;justify-content:space-between;align-items:center;margin-top:16px;font-family:'JetBrains Mono',monospace;font-size:9px;letter-spacing:.16em;color:var(--mut)}
+.connect-button{display:none}
+.home-style-button .connect-text{display:none}
+.home-style-button .connect-button{display:flex;flex-direction:column;align-items:center;gap:18px;padding:10px 0 4px}
+.power-btn{width:108px;height:108px;border:1px solid var(--ln);border-radius:var(--rad);display:flex;align-items:center;justify-content:center;transition:border-color .25s,box-shadow .25s}
+.power-glyph{font-size:46px;line-height:1;color:var(--dim);transition:color .25s}
+.connect.on .power-btn{border-color:var(--ok);box-shadow:0 0 0 1px var(--ok) inset,0 0 26px -5px var(--ok)}
+.connect.on .power-glyph{color:var(--ok)}
+.power-label{font-weight:700;font-size:16px;letter-spacing:.05em}
+.server-blk{padding:22px 24px 0;display:flex;align-items:center;justify-content:space-between}
+.server-blk .l{display:flex;align-items:center;gap:12px}
+.server-blk .flag{width:26px;height:19px;border-radius:2px;border:1px solid var(--ln);object-fit:cover;background:var(--ln)}
+.server-blk .name{font-weight:600;font-size:17px;letter-spacing:-.01em}
+.server-blk .meta{font-family:'JetBrains Mono',monospace;font-size:9px;letter-spacing:.12em;color:var(--mut);margin-top:3px}
+.server-blk .ping{font-family:'JetBrains Mono',monospace;font-size:13px;color:var(--ok)}
+.sess{margin:22px 24px 0;padding-top:18px;border-top:1px solid var(--ln);display:flex;justify-content:space-between}
+.sess .cell .k{font-family:'JetBrains Mono',monospace;font-size:9px;letter-spacing:.16em;color:var(--mut)}
+.sess .cell .v{font-weight:700;font-size:22px;margin-top:4px}
+
+/* СПИСКИ (серверы/подписки/настройки) */
+.sec-title{padding:26px 24px 4px;font-weight:800;font-size:34px;letter-spacing:-.02em}
+.sec-sub{padding:0 24px 10px;font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:.14em;color:var(--mut)}
+.row{display:flex;align-items:center;gap:12px;padding:15px 24px;border-top:1px solid var(--ln);cursor:pointer}
+.row:active{background:var(--ln)}
+.row .flag{width:24px;height:18px;border-radius:2px;border:1px solid var(--ln);object-fit:cover;background:var(--ln);flex:none}
+.row .grow{flex:1;min-width:0}
+.row .t{font-weight:600;font-size:16px;letter-spacing:-.01em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.row .s{font-family:'JetBrains Mono',monospace;font-size:9px;letter-spacing:.1em;color:var(--mut);margin-top:2px}
+.row .ping{font-family:'JetBrains Mono',monospace;font-size:12px;flex:none}
+.row .chev{color:var(--mut);font-size:16px;flex:none}
+.ico-badge{background:transparent!important;display:inline-flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;color:var(--mut);line-height:1}
+.toggle{width:44px;height:26px;border-radius:20px;border:1px solid var(--ln);position:relative;flex:none;background:none;cursor:pointer}
+.toggle::after{content:"";position:absolute;top:3px;left:3px;width:18px;height:18px;border-radius:50%;background:var(--dim);transition:.15s}
+.toggle.on{background:var(--fg);border-color:var(--fg)}
+.toggle.on::after{left:23px;background:var(--bg)}
+.info-i{display:inline-flex;align-items:center;justify-content:center;width:15px;height:15px;margin-left:5px;border-radius:50%;border:1px solid var(--mut);color:var(--mut);font-size:10px;font-style:normal;cursor:pointer;vertical-align:1px}
+
+/* НИЖНЯЯ НАВИГАЦИЯ */
+.nav{display:flex;border-top:1px solid var(--fg);flex:none}
+.nav button{flex:1;padding:12px 0 calc(12px + env(safe-area-inset-bottom));background:none;border:none;color:var(--mut);font-family:'JetBrains Mono',monospace;font-size:9px;letter-spacing:.14em;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:5px}
+.nav button .g{font-size:15px}
+.nav button.active{color:var(--fg)}
+.hidden{display:none}
+
+/* МОДАЛКА ПОДПИСКИ */
+.sub-modal{position:fixed;inset:0;background:rgba(0,0,0,.55);display:flex;align-items:flex-end;z-index:50}
+.sub-modal.hidden{display:none}
+.sub-modal-card{width:100%;background:var(--bg);border-top:1px solid var(--fg);padding:26px 24px calc(26px + env(safe-area-inset-bottom))}
+.sub-modal-title{font-weight:800;font-size:26px;letter-spacing:-.02em}
+.sub-seg{display:flex;gap:8px;margin-top:14px}
+.sub-seg-btn{flex:1;padding:10px;border:1px solid var(--ln);border-radius:var(--rad);background:transparent;color:var(--mut);font-size:13px;font-weight:600;cursor:pointer}
+.sub-seg-btn.active{background:var(--fg);color:var(--bg);border-color:var(--fg)}
+.sub-modal-hint{font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:.12em;color:var(--mut);margin-top:12px}
+.sub-input{width:100%;margin-top:16px;padding:14px;background:transparent;border:1px solid var(--ln);border-radius:var(--rad);color:var(--fg);font-family:'JetBrains Mono',monospace;font-size:13px}
+.sub-input:focus{outline:none;border-color:var(--fg)}
+.sub-modal-btns{display:flex;gap:10px;margin-top:16px}
+.center-modal{position:fixed;inset:0;background:rgba(0,0,0,.55);display:flex;align-items:center;justify-content:center;z-index:70;padding:24px}
+.center-modal.hidden{display:none}
+.center-modal-card{position:relative;width:100%;max-width:340px;background:var(--bg);border:1px solid var(--ln);border-radius:var(--rad);padding:26px 22px 22px}
+.center-modal-close{position:absolute;top:10px;right:10px;width:30px;height:30px;border:1px solid var(--ln);border-radius:50%;background:none;color:var(--dim);font-size:13px;cursor:pointer}
+.center-modal-title{font-weight:800;font-size:18px;letter-spacing:-.01em;padding-right:28px}
+.center-modal-text{font-size:13.5px;color:var(--dim);line-height:1.55;margin-top:10px}
+.center-modal-hint{font-family:'JetBrains Mono',monospace;font-size:10.5px;letter-spacing:.06em;color:var(--mut);margin-top:16px;display:flex;align-items:center;gap:8px}
+.center-modal-hint .dot{width:7px;height:7px;border-radius:50%;background:currentColor;animation:banner-pulse 1s ease-in-out infinite;flex:none}
+.sub-btn{flex:1;padding:14px;border-radius:var(--rad);font-weight:600;font-size:14px;cursor:pointer;border:1px solid var(--ln);background:transparent;color:var(--fg)}
+.sub-btn.primary{background:var(--fg);color:var(--bg);border-color:var(--fg)}
+.list-note{padding:20px 24px;font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:.06em;color:var(--mut);line-height:1.7}
+.servers-banner{margin:0 24px 14px;padding:10px 12px;border-radius:var(--rad);font-family:'JetBrains Mono',monospace;font-size:10.5px;letter-spacing:.08em;display:flex;align-items:center;gap:9px;border:1px solid var(--ln)}
+.update-banner{margin:14px 24px 0;padding:12px 14px;border-radius:var(--rad);border:1px solid var(--ok);color:var(--ok);display:flex;align-items:center;justify-content:space-between;cursor:pointer;font-family:'JetBrains Mono',monospace;font-size:10.5px;letter-spacing:.06em}
+.update-banner.hidden{display:none}
+.servers-banner.hidden{display:none}
+.servers-banner .dot{width:7px;height:7px;border-radius:50%;background:currentColor;flex:none}
+.servers-banner.updating{color:var(--mid);border-color:var(--mid)}
+.servers-banner.updating .dot{animation:banner-pulse 1s ease-in-out infinite}
+.servers-banner.updated{color:var(--ok);border-color:var(--ok)}
+.servers-banner.offline{color:var(--bad);border-color:var(--bad)}
+@keyframes banner-pulse{0%,100%{opacity:.25}50%{opacity:1}}
+.grp-row .t{font-weight:700}
+.node-row{padding-left:44px}
+.node-row .t{font-weight:500}
+.ro-badge{font-family:'JetBrains Mono',monospace;font-size:9px;letter-spacing:.04em;color:var(--mut);border:1px solid var(--ln);border-radius:4px;padding:3px 7px;margin-right:6px;white-space:nowrap;flex:none}
+.dbg{margin:12px 24px 0;padding:10px 12px;border:1px solid var(--ln);border-radius:var(--rad);font-family:'JetBrains Mono',monospace;font-size:9.5px;line-height:1.5;color:var(--dim);white-space:pre-wrap;word-break:break-word;max-height:120px;overflow:auto;display:none}
+.dbg.on{display:block}
+.back-row{display:flex;align-items:center;gap:10px;cursor:pointer;margin-bottom:4px}
+.back-row .bk{font-size:22px;line-height:1;color:var(--mut)}
+.apps-search{width:100%;margin:14px 0 6px;padding:12px 14px;background:transparent;border:1px solid var(--ln);border-radius:var(--rad);color:var(--fg);font-family:'JetBrains Mono',monospace;font-size:13px}
+.apps-search:focus{outline:none;border-color:var(--fg)}
+.app-row{display:flex;align-items:center;gap:13px;padding:12px 4px;border-bottom:1px solid var(--ln);cursor:pointer}
+.app-mono{width:34px;height:34px;flex:none;border-radius:9px;background:var(--ln);color:var(--fg);display:flex;align-items:center;justify-content:center;font-weight:800;font-size:16px;text-transform:uppercase}
+.app-row .grow{min-width:0}
+.app-row .t{font-size:14px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.app-row .s{font-family:'JetBrains Mono',monospace;font-size:9.5px;letter-spacing:.04em;color:var(--dim);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.chk{width:24px;height:24px;flex:none;border:1px solid var(--ln);border-radius:7px;display:flex;align-items:center;justify-content:center;color:transparent;font-size:15px;font-weight:900}
+.chk.on{background:var(--fg);border-color:var(--fg);color:var(--bg)}
+.split-off .app-list{opacity:.4;pointer-events:none}
+.accent-row{display:flex;gap:10px;flex-wrap:wrap}
+.accent-dot{width:30px;height:30px;border-radius:50%;border:2px solid transparent;cursor:pointer;flex:none}
+.accent-dot.on{border-color:var(--fg)}
+.chain-nodes{max-height:230px;overflow-y:auto;margin-top:6px;border:1px solid var(--ln);border-radius:var(--rad)}
+.chain-node{display:flex;align-items:center;gap:10px;padding:11px 12px;border-bottom:1px solid var(--ln);cursor:pointer}
+.chain-node.on{background:var(--ln)}
+.chain-node .t{font-size:14px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.rule-line{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--dim)}
+.list-note.collapsible .cn-text{display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;overflow:hidden}
+.list-note.collapsible.expanded .cn-text{-webkit-line-clamp:unset;overflow:visible}
+.cn-toggle{margin-top:8px;font-weight:700;color:var(--fg);cursor:pointer;letter-spacing:.06em}
+</style>
+</head>
+<body>
+<div class="app">
+  <div class="head">
+    <div class="brand"><img src="logo.png" alt=""><span class="brand-col"><span>MISETANIBOX</span><span class="brand-face" id="brand-face">-_-</span></span></div>
+    <div class="head-r"><button class="icon-btn" onclick="toggleTheme()">◐</button></div>
+  </div>
+
+  <!-- ГЛАВНАЯ -->
+  <div class="view" id="view-home">
+    <div class="status-blk">
+      <div class="status-lbl">СТАТУС</div>
+      <div class="status-val" id="status-val">○ ОТКЛЮЧЕНО</div>
+    </div>
+    <div id="update-banner" class="update-banner hidden" onclick="openUpdateModal()">
+      <span id="update-banner-version"></span><span class="chev">›</span>
+    </div>
+    <div class="connect" id="connect" onclick="toggleConnect()">
+      <div class="connect-text" id="connect-text">
+        <div class="big" id="connect-big">ПОДКЛЮ-<br>ЧИТЬСЯ</div>
+      </div>
+      <div class="connect-button" id="connect-button">
+        <div class="power-btn"><span class="power-glyph" id="power-glyph">◇</span></div>
+        <div class="power-label" id="power-label">ПОДКЛЮЧИТЬСЯ</div>
+      </div>
+      <div class="sub"><span>ТАП — ЗАПУСК ТУННЕЛЯ</span><span id="mode-lbl" onclick="event.stopPropagation();cycleMode()">ПРАВИЛА</span></div>
+    </div>
+    <div id="dbg" class="dbg" onclick="copyDbg()"></div>
+    <div class="server-blk" onclick="go('servers')">
+      <div class="l">
+        <img class="flag" id="home-flag" src="" alt="" style="display:none">
+        <div><div class="name" id="home-name">Не выбран</div><div class="meta" id="home-meta">ПОДПИСКА НЕ ПОДКЛЮЧЕНА</div></div>
+      </div>
+      <div class="ping" id="home-ping"></div>
+    </div>
+    <div class="sess">
+      <div class="cell"><div class="k">СЕССИЯ</div><div class="v" id="sess-time">00:00</div></div>
+      <div class="cell" style="text-align:right"><div class="k">ТРАФИК</div><div class="v" id="sess-data">0 МБ</div></div>
+    </div>
+  </div>
+
+  <!-- СЕРВЕРЫ -->
+  <div class="view hidden" id="view-servers">
+    <div class="sec-title">Серверы</div>
+    <div class="sec-sub" id="servers-sub">НЕ ПОДКЛЮЧЕНО</div>
+    <div id="servers-banner" class="servers-banner hidden"></div>
+    <div id="server-list"></div>
+  </div>
+
+  <!-- ПОДПИСКИ -->
+  <div class="view hidden" id="view-subs">
+    <div class="sec-title">Подписки</div>
+    <div class="sec-sub" id="subs-count">НЕТ ПОДПИСОК</div>
+    <div id="subs-list"></div>
+    <div class="row" style="color:var(--dim)" onclick="addSubscription()"><div class="grow"><div class="t">+ Добавить подписку</div><div class="s">ТАП ПО ПОДПИСКЕ — СДЕЛАТЬ АКТИВНОЙ</div></div></div>
+    <div class="row" onclick="openUaModal()"><div class="grow"><div class="t">User-Agent</div><div class="s" id="ua-sub">CLASH-META/MIHOMO</div></div><span class="chev">›</span></div>
+    <div class="list-note">Панель отдаёт формат конфига по User-Agent. Клиент понимает все три: конфиг mihomo (YAML), конфиг Xray (JSON) и список ссылок — конвертация в формат ядра происходит на устройстве.</div>
+  </div>
+
+  <!-- ПРАВИЛА -->
+  <div class="view hidden" id="view-rules">
+    <div class="sec-title">Правила</div>
+    <div class="sec-sub">КУДА ПУСКАТЬ ТРАФИК</div>
+
+    <div class="row"><div class="grow"><div class="t">Российские сайты напрямую</div><div class="s">RU-АДРЕСА МИМО VPN</div></div>
+      <button class="toggle" id="pr-ru" onclick="togglePreset('ru', this)"></button></div>
+    <div class="row"><div class="grow"><div class="t">Блокировать рекламу</div><div class="s">РЕКЛАМА И ТРЕКЕРЫ</div></div>
+      <button class="toggle" id="pr-ads" onclick="togglePreset('ads', this)"></button></div>
+    <div class="row"><div class="grow"><div class="t">Локальная сеть напрямую</div><div class="s">РОУТЕР, ПРИНТЕРЫ, NAS</div></div>
+      <button class="toggle" id="pr-lan" onclick="togglePreset('lan', this)"></button></div>
+
+    <div class="sec-title" style="font-size:22px;padding-top:22px">Свои правила</div>
+    <div class="sec-sub" id="rules-count">НЕТ СВОИХ ПРАВИЛ</div>
+    <div id="rules-list"></div>
+    <div class="row" style="color:var(--dim)" onclick="openRuleModal()"><div class="grow"><div class="t">+ Добавить правило</div><div class="s">ДОМЕН ИЛИ IP → КУДА</div></div></div>
+
+    <div class="list-note">Правила применяются при следующем подключении. Порядок: свои правила сверху, затем пресеты, в конце — всё остальное через VPN.</div>
+  </div>
+
+
+  <!-- ЦЕПОЧКИ -->
+  <div class="view hidden" id="view-chains">
+    <div class="back-row" onclick="go('settings')"><span class="bk">‹</span><div class="sec-title" style="margin:0">Цепочки</div></div>
+    <div class="sec-sub">ТРАФИК ЧЕРЕЗ ДВА СЕРВЕРА ПОДРЯД</div>
+    <div id="chain-list"></div>
+    <div class="row" style="color:var(--dim)" onclick="openChainModal()"><div class="grow"><div class="t">+ Создать цепочку</div><div class="s">ВЫБЕРИ ВХОДНОЙ СЕРВЕР</div></div></div>
+    <div class="list-note">Цепочка появится в списке серверов как «🔗 имя» — выбери её, а внутри укажи выходной сервер. Применяется при следующем подключении.</div>
+  </div>
+
+  <!-- ПРОВЕРКА СЕРВЕРОВ (ПИНГ) -->
+  <div class="view hidden" id="view-pingcfg">
+    <div class="back-row" onclick="go('settings')"><span class="bk">‹</span><div class="sec-title" style="margin:0">Проверка серверов</div></div>
+    <div class="sec-sub">КУДА И КАК ПРОВЕРЯТЬ СКОРОСТЬ ОТВЕТА</div>
+
+    <div class="sec-title" style="font-size:18px;padding-top:18px;padding-bottom:0">Адрес проверки</div>
+    <div class="row" onclick="setPingPreset('gstatic')"><div class="grow"><div class="t">gstatic (по умолчанию)</div><div class="s">http://www.gstatic.com/generate_204</div></div><span class="chev" id="pp-gstatic"></span></div>
+    <div class="row" onclick="setPingPreset('google')"><div class="grow"><div class="t">Google</div><div class="s">http://www.google.com/generate_204</div></div><span class="chev" id="pp-google"></span></div>
+    <div class="row" onclick="setPingPreset('cloudflare')"><div class="grow"><div class="t">Cloudflare</div><div class="s">http://cp.cloudflare.com/generate_204</div></div><span class="chev" id="pp-cloudflare"></span></div>
+    <div class="row" style="display:block">
+      <div class="grow" style="margin-bottom:10px"><div class="t">Свой адрес</div><div class="s">ПОЛНЫЙ URL, НАПРИМЕР http://example.com</div></div>
+      <input id="ping-custom-url" class="sub-input" type="text" inputmode="url" autocapitalize="off" autocorrect="off" spellcheck="false" placeholder="http://..." onblur="saveCustomPingUrl()">
+    </div>
+
+    <div class="sec-title" style="font-size:18px;padding-top:18px;padding-bottom:0">Тип проверки</div>
+    <div class="sub-seg" style="margin:10px 24px 0;width:calc(100% - 48px)">
+      <button class="sub-seg-btn" id="ping-mode-numeric" onclick="setPingMode('numeric')">HTTP GET · мс</button>
+      <button class="sub-seg-btn" id="ping-mode-strict" onclick="setPingMode('strict')">Жёсткая · да/нет</button>
+    </div>
+    <div class="list-note" id="ping-mode-hint">HTTP GET — показывает точное время ответа в миллисекундах через сам сервер.</div>
+
+    <div class="list-note">Пинг всегда идёт настоящим запросом через выбранный сервер (не просто «видит ли телефон интернет»), поэтому это надёжный показатель именно того, что сервер реально работает. Прямой TCP/ICMP-пинг к самому серверу (в обход прокси-протокола) в этой версии ядра недоступен — движок mihomo такого не отдаёт через свой API.</div>
+  </div>
+
+  <!-- НАСТРОЙКИ -->
+  <div class="view hidden" id="view-settings">
+    <div class="sec-title">Настройки</div>
+    <div class="sec-sub" id="ver-sub">MISETANIBOX</div>
+    <div class="row"><div class="grow"><div class="t">Режим TUN</div><div class="s">ПОЛНЫЙ ПЕРЕХВАТ ТРАФИКА</div></div><button class="toggle on" onclick="this.classList.toggle('on')"></button></div>
+    <div class="row" onclick="go('apps')"><div class="grow"><div class="t">Раздельный туннель</div><div class="s" id="split-sub">ПО ПРИЛОЖЕНИЯМ · ВЫКЛ</div></div><span class="chev">›</span></div>
+    <div class="row" onclick="go('chains')"><div class="grow"><div class="t">Цепочки</div><div class="s" id="chains-sub">НЕТ ЦЕПОЧЕК</div></div><span class="chev">›</span></div>
+    <div class="row" onclick="go('pingcfg')"><div class="grow"><div class="t">Проверка серверов</div><div class="s" id="pingcfg-sub">GSTATIC · HTTP GET</div></div><span class="chev">›</span></div>
+
+    <div class="sec-title" style="font-size:22px;padding-top:22px">Автономность</div>
+    <div class="sec-sub">РАБОТАЕТ САМО, БЕЗ УЧАСТИЯ ПОЛЬЗОВАТЕЛЯ</div>
+    <div class="list-note collapsible" id="autonomy-note" style="padding:0 24px 14px">
+      <div class="cn-text">Чтобы «Автовключение по приложению» не отключалось само по себе, телефон должен разрешить приложению работать в фоне. Обычно это три шага в системных настройках: <b>добавить в автозапуск</b>, <b>разрешить работу в фоновом режиме</b> и <b>отключить оптимизацию батареи</b> именно для этого приложения. Кнопка ниже откроет нужный экран — но на разных прошивках это выглядит по-разному: где-то она сразу отключает оптимизацию, где-то переносит в раздел «Батарея», где там нужно вручную поставить «Без ограничений» и отдельно включить фоновый режим. Если после этого функция всё равно отключается сама — стоит донастроить всё то же самое вручную через Настройки телефона → Приложения → это приложение.</div>
+      <div class="cn-toggle" onclick="toggleNote('autonomy-note')">Показать полностью ▾</div>
+    </div>
+    <div class="row"><div class="grow"><div class="t">Автозапуск</div><div class="s">ПОДНЯТЬ ТУННЕЛЬ ПРИ ВКЛЮЧЕНИИ УСТРОЙСТВА</div></div><button class="toggle" id="tgl-autostart" onclick="toggleAutostart(this)"></button></div>
+    <div class="row"><div class="grow"><div class="t">Отключать при блокировке</div><div class="s">РАЗРЫВАТЬ ПРИ БЛОКИРОВКЕ ЭКРАНА</div></div><button class="toggle" id="tgl-lock-disconnect" onclick="toggleLockDisconnect(this)"></button></div>
+    <div class="row"><div class="grow"><div class="t">Подключать при разблокировке</div><div class="s">АВТОМАТИЧЕСКИ ПЕРЕПОДКЛЮЧАТЬСЯ ПОСЛЕ РАЗБЛОКИРОВКИ</div></div><button class="toggle" id="tgl-lock-reconnect" onclick="toggleLockReconnect(this)"></button></div>
+    <div class="row" onclick="requestBatteryIgnore()"><div class="grow"><div class="t">Отключить оптимизацию батареи</div><div class="s" id="batt-sub">НУЖНО, ЧТОБЫ БЛОКИРОВКА ЭКРАНА РАБОТАЛА В ФОНЕ</div></div><span class="chev">›</span></div>
+    <div class="row"><div class="grow"><div class="t">Экономичный режим<i class="info-i" onclick="event.stopPropagation();showInfo('Экономичный режим','Приложение реже опрашивает ядро о трафике и списке серверов, пока экран открыт — это снижает нагрузку на процессор и число фоновых будильников. Скорость и стабильность самого VPN-соединения не меняются, экономия только на служебных проверках интерфейса.')">ⓘ</i></div><div class="s">РЕЖЕ ОБНОВЛЯЕТ ИНТЕРФЕЙС — МЕНЬШЕ РАСХОД БАТАРЕИ</div></div><button class="toggle" id="tgl-battery-saver" onclick="toggleBatterySaver(this)"></button></div>
+    <div class="row"><div class="grow"><div class="t">Пинг в уведомлении<i class="info-i" onclick="event.stopPropagation();showInfo('Пинг в уведомлении','Уведомление о работающем VPN в шторке раз в 20 секунд показывает реальный пинг активного сервера и даёт кнопку «Отключить» без открытия приложения. Само уведомление убрать нельзя — это требование Android для любого VPN-сервиса, но замер пинга — отдельная периодическая проверка, и её можно выключить.')">ⓘ</i></div><div class="s">РЕАЛЬНЫЙ ПИНГ И КНОПКА «ОТКЛЮЧИТЬ» В ШТОРКЕ</div></div><button class="toggle" id="tgl-notif-ping" onclick="toggleNotifPing(this)"></button></div>
+    <div class="row" onclick="go('trigger')"><div class="grow"><div class="t">Автовключение по приложению<i class="info-i" onclick="event.stopPropagation();showInfo('Автовключение по приложению','Выберите приложение — VPN включится сам, когда вы его откроете, и выключится, когда вы из него выйдете (если вы не включали VPN вручную сами до этого). Это аналог автоматизаций «Команды» (Shortcuts) на iPhone — там похожее делается через триггер «Когда приложение открывается». Работает через отдельное фоновое наблюдение за экраном, поэтому в шторке появится второе уведомление — так требует Android для любого фонового процесса, убрать его нельзя.')">ⓘ</i></div><div class="s" id="trigger-sub">ВЫКЛЮЧЕНО</div></div><span class="chev">›</span></div>
+    <div class="list-note" style="padding:10px 4px 0">Плитка в шторке и виджет на рабочем столе включают VPN одним тапом — добавь их через системное меню.</div>
+
+    <div class="sec-title" style="font-size:22px;padding-top:22px">Внешний вид</div>
+    <div class="row"><div class="grow"><div class="t">Тема</div><div class="s">ТЁМНАЯ / СВЕТЛАЯ</div></div><span class="chev" onclick="toggleTheme()">◐</span></div>
+    <div class="row" style="display:block">
+      <div class="grow" style="margin-bottom:12px"><div class="t">Оформление</div><div class="s">ЦВЕТ АКЦЕНТА</div></div>
+      <div class="accent-row" id="accent-row"></div>
+    </div>
+    <div class="row" style="display:block">
+      <div class="grow" style="margin-bottom:12px"><div class="t">Главный экран</div><div class="s">КАК ВЫГЛЯДИТ КНОПКА ПОДКЛЮЧЕНИЯ</div></div>
+      <div class="sub-seg">
+        <button class="sub-seg-btn" id="home-style-text" onclick="setHomeStyle('text')">Текст</button>
+        <button class="sub-seg-btn" id="home-style-button" onclick="setHomeStyle('button')">Кнопка</button>
+      </div>
+    </div>
+
+    <div class="sec-title" style="font-size:22px;padding-top:22px">Обновления</div>
+    <div class="row" onclick="checkForUpdate(false)"><div class="grow"><div class="t">Проверить обновления</div><div class="s">СРАВНИТЬ С ПОСЛЕДНИМ РЕЛИЗОМ НА GITHUB</div></div><span class="chev">⟳</span></div>
+
+    <div class="row" onclick="showAbout()"><div class="grow"><div class="t">О приложении</div><div class="s">ВЕРСИЯ · ЛИЦЕНЗИЯ · АВТОРЫ</div></div><span class="chev">›</span></div>
+    <div class="list-note" id="about-note">Misetanibox · ядро mihomo (MetaCubeX). Android-версия — вклад @14Unight (плитка, виджет, автозапуск).</div>
+  </div>
+
+  <!-- РАЗДЕЛЬНЫЙ ТУННЕЛЬ ПО ПРИЛОЖЕНИЯМ -->
+  <div class="view hidden" id="view-apps">
+    <div class="back-row" onclick="go('settings')"><span class="bk">‹</span><div class="sec-title" style="margin:0">Раздельный туннель</div></div>
+    <div class="sec-sub">КАКИЕ ПРИЛОЖЕНИЯ ИДУТ ЧЕРЕЗ VPN</div>
+    <div class="sub-seg" style="margin-top:14px">
+      <button class="sub-seg-btn" id="split-off" onclick="setSplitMode('off')">Все через VPN</button>
+      <button class="sub-seg-btn" id="split-bypass" onclick="setSplitMode('bypass')">Мимо VPN</button>
+      <button class="sub-seg-btn" id="split-only" onclick="setSplitMode('only')">Только VPN</button>
+    </div>
+    <div class="list-note" id="split-hint" style="padding:12px 4px">Весь трафик идёт через VPN.</div>
+    <input id="apps-search" class="apps-search" type="text" placeholder="Поиск приложения…" autocapitalize="off" autocorrect="off" spellcheck="false" oninput="renderAppList()">
+    <div class="app-list" id="app-list"><div class="list-note">Загрузка списка приложений…</div></div>
+  </div>
+
+  <!-- АВТОВКЛЮЧЕНИЕ ПО ПРИЛОЖЕНИЮ -->
+  <div class="view hidden" id="view-trigger">
+    <div class="back-row" onclick="go('settings')"><span class="bk">‹</span><div class="sec-title" style="margin:0">Автовключение по приложению</div></div>
+    <div class="sec-sub">VPN ВКЛЮЧИТСЯ ПРИ ОТКРЫТИИ, ВЫКЛЮЧИТСЯ ПРИ ВЫХОДЕ</div>
+    <div class="row"><div class="grow"><div class="t">Включить функцию</div><div class="s" id="trigger-enabled-sub">СНАЧАЛА ВЫБЕРИТЕ ПРИЛОЖЕНИЯ НИЖЕ</div></div><button class="toggle" id="tgl-trigger-enabled" onclick="toggleTriggerEnabled(this)"></button></div>
+    <div class="row" onclick="requestUsageAccess()"><div class="grow"><div class="t">Доступ к статистике использования</div><div class="s" id="usage-access-sub">ПРОВЕРКА…</div></div><span class="chev">›</span></div>
+    <div class="list-note">Приложение-триггер сейчас: <span id="trigger-current">не выбрано</span></div>
+    <input id="trigger-search" class="apps-search" type="text" placeholder="Поиск приложения…" autocapitalize="off" autocorrect="off" spellcheck="false" oninput="renderTriggerAppList()">
+    <div id="trigger-app-list"><div class="list-note">Загрузка списка приложений…</div></div>
+  </div>
+
+  <div class="sub-modal hidden" id="info-modal" onclick="if(event.target===this)closeInfoModal()">
+    <div class="sub-modal-card">
+      <div class="sub-modal-title" id="info-title"></div>
+      <div class="list-note" id="info-text" style="padding:12px 0 0"></div>
+      <div class="sub-modal-btns">
+        <button class="sub-btn primary" onclick="closeInfoModal()">Понятно</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="sub-modal hidden" id="sub-modal" onclick="if(event.target===this)closeSubModal()">
+    <div class="sub-modal-card">
+      <div class="sub-modal-title">Подписка</div>
+      <div class="sub-seg">
+        <button class="sub-seg-btn active" id="seg-url" onclick="setSubMode('url')">По ссылке</button>
+        <button class="sub-seg-btn" id="seg-dns" onclick="setSubMode('dns')">Через DNS</button>
+      </div>
+      <div class="sub-modal-hint" id="sub-hint">Ссылка на конфиг: mihomo YAML, Xray JSON или список ссылок</div>
+      <input id="sub-input" class="sub-input" type="text" inputmode="url" autocapitalize="off" autocorrect="off" spellcheck="false" placeholder="https://...">
+      <div class="sub-modal-btns">
+        <button class="sub-btn ghost" onclick="closeSubModal()">Отмена</button>
+        <button class="sub-btn primary" onclick="saveSubModal()">Сохранить</button>
+      </div>
+    </div>
+  </div>
+
+
+  <div class="sub-modal hidden" id="ua-modal" onclick="if(event.target===this)closeUaModal()">
+    <div class="sub-modal-card">
+      <div class="sub-modal-title">User-Agent</div>
+      <div class="sub-modal-hint">Каким клиентом представляться панели</div>
+      <div id="ua-presets" class="chain-nodes"></div>
+      <div class="sub-modal-hint">Или свой</div>
+      <input id="ua-input" class="sub-input" type="text" autocapitalize="off" autocorrect="off" spellcheck="false" placeholder="clash-meta/mihomo">
+      <div class="row" style="padding:12px 0 0;border-top:none" onclick="closeUaModal();autoDetectUaManual()"><div class="grow"><div class="t">⟳ Подобрать автоматически</div><div class="s">РЕАЛЬНАЯ ПРОВЕРКА КАЖДОГО ВАРИАНТА, НУЖЕН ОТКЛЮЧЁННЫЙ VPN</div></div></div>
+      <div class="sub-modal-btns">
+        <button class="sub-btn ghost" onclick="closeUaModal()">Отмена</button>
+        <button class="sub-btn primary" onclick="saveUaModal()">Сохранить</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="sub-modal hidden" id="rule-modal" onclick="if(event.target===this)closeRuleModal()">
+    <div class="sub-modal-card">
+      <div class="sub-modal-title">Своё правило</div>
+      <div class="sub-modal-hint">Что перехватываем</div>
+      <div class="sub-seg" style="flex-wrap:wrap">
+        <button class="sub-seg-btn active" data-rt="DOMAIN-SUFFIX" onclick="setRuleType(this)">Домен</button>
+        <button class="sub-seg-btn" data-rt="DOMAIN-KEYWORD" onclick="setRuleType(this)">Слово</button>
+        <button class="sub-seg-btn" data-rt="IP-CIDR" onclick="setRuleType(this)">IP</button>
+        <button class="sub-seg-btn" data-rt="PROCESS-NAME" onclick="setRuleType(this)">Приложение</button>
+      </div>
+      <input id="rule-value" class="sub-input" type="text" autocapitalize="off" autocorrect="off" spellcheck="false" placeholder="например: example.com">
+      <div class="sub-modal-hint">Куда направить</div>
+      <div class="sub-seg">
+        <button class="sub-seg-btn active" data-rtg="PROXY" onclick="setRuleTarget(this)">Через VPN</button>
+        <button class="sub-seg-btn" data-rtg="DIRECT" onclick="setRuleTarget(this)">Мимо VPN</button>
+        <button class="sub-seg-btn" data-rtg="REJECT" onclick="setRuleTarget(this)">Блокировать</button>
+      </div>
+      <div class="sub-modal-btns">
+        <button class="sub-btn ghost" onclick="closeRuleModal()">Отмена</button>
+        <button class="sub-btn primary" onclick="saveRule()">Добавить</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="sub-modal hidden" id="chain-modal" onclick="if(event.target===this)closeChainModal()">
+    <div class="sub-modal-card">
+      <div class="sub-modal-title">Цепочка</div>
+      <input id="chain-name" class="sub-input" type="text" maxlength="24" placeholder="Название (напр. NL → DE)">
+      <div class="sub-modal-hint">Входной сервер — через него пойдёт цепочка</div>
+      <input id="chain-search" class="apps-search" type="text" placeholder="Поиск сервера…" autocapitalize="off" oninput="renderChainNodes()">
+      <div id="chain-nodes" class="chain-nodes"></div>
+      <div class="sub-modal-btns">
+        <button class="sub-btn ghost" onclick="closeChainModal()">Отмена</button>
+        <button class="sub-btn primary" onclick="saveChain()">Создать</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="sub-modal hidden" id="update-modal" onclick="if(event.target===this)closeUpdateModal()">
+    <div class="sub-modal-card">
+      <div class="sub-modal-title">Доступно обновление <span id="update-modal-version"></span></div>
+      <div class="list-note" id="update-modal-notes" style="padding:12px 0 0;max-height:280px;overflow-y:auto;white-space:pre-wrap"></div>
+      <div class="sub-modal-hint" id="update-modal-status"></div>
+      <div class="sub-modal-btns">
+        <button class="sub-btn ghost" onclick="closeUpdateModal()">Позже</button>
+        <button class="sub-btn primary" id="update-download-btn" onclick="startUpdateDownload()">Скачать и установить</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="center-modal hidden" id="ua-test-modal">
+    <div class="center-modal-card">
+      <button class="center-modal-close" onclick="closeUaTestModal()">✕</button>
+      <div class="center-modal-title">Подбираю рабочий формат подписки</div>
+      <div class="center-modal-text">Некоторые сервера показываются в списке, но не работают из-за формата ответа панели. Сейчас проверю несколько вариантов по очереди — интернет на телефоне может на секунду-другую пропадать, это нормально, скоро включится обратно.</div>
+      <div class="center-modal-hint"><span class="dot"></span><span id="ua-test-hint-text">Начинаю проверку…</span></div>
+    </div>
+  </div>
+
+  <nav class="nav">
+    <button class="active" data-tab="home" onclick="go('home')"><span class="g">◇</span>ГЛАВНАЯ</button>
+    <button data-tab="servers" onclick="go('servers')"><span class="g">≡</span>СЕРВЕРЫ</button>
+    <button data-tab="rules" onclick="go('rules')"><span class="g">§</span>ПРАВИЛА</button>
+    <button data-tab="subs" onclick="go('subs')"><span class="g">⊞</span>ПОДПИСКИ</button>
+    <button data-tab="settings" onclick="go('settings')"><span class="g">⚙</span>НАСТРОЙКИ</button>
+  </nav>
+</div>
+
+<script>
+// ---------- тост (alert/prompt в WebView ненадёжны) ----------
+function toast(msg){
+  let t=document.getElementById('mise-toast');
+  if(!t){ t=document.createElement('div'); t.id='mise-toast'; document.body.appendChild(t);
+    t.style.cssText='position:fixed;left:16px;right:16px;bottom:calc(80px + env(safe-area-inset-bottom));z-index:100;background:var(--fg);color:var(--bg);padding:13px 16px;border-radius:8px;font-size:13px;font-weight:600;text-align:center;opacity:0;transition:opacity .2s;pointer-events:none';
+  }
+  t.textContent=msg; t.style.opacity='1';
+  clearTimeout(t._h); t._h=setTimeout(()=>{ t.style.opacity='0'; }, 3200);
+}
+// ---------- сворачиваемые длинные заметки (.list-note.collapsible) ----------
+// По умолчанию — 2 строки с многоточием, тап по подписи — разворачивает/сворачивает.
+// Универсально: применимо к любому .list-note.collapsible#id с .cn-text/.cn-toggle внутри.
+function toggleNote(id){
+  const el=document.getElementById(id); if(!el) return;
+  const open=el.classList.toggle('expanded');
+  const t=el.querySelector('.cn-toggle');
+  if(t) t.textContent = open ? 'Свернуть ▴' : 'Показать полностью ▾';
+}
+
+// ---------- определение страны по имени ноды ----------
+const FLAG_NAMES={us:['united states','usa','сша','америк'],gb:['united kingdom','britain','england','uk','британ','англи','лондон'],de:['germany','герман','франкфурт','frankfurt'],nl:['netherlands','нидерланд','амстердам','amsterdam'],fr:['france','франц','париж'],ru:['russia','росси','москв','moscow'],ua:['ukraine','украин'],se:['sweden','швеци'],fi:['finland','финлянд','helsinki'],no:['norway','норвег'],dk:['denmark','дани'],pl:['poland','польш'],ch:['switzerland','швейцар'],at:['austria','австри'],es:['spain','испани'],it:['italy','итали'],pt:['portugal','португал'],tr:['turkey','турци','istanbul'],jp:['japan','япони','tokyo'],hk:['hong kong','гонконг'],sg:['singapore','сингапур'],kr:['korea','корея'],tw:['taiwan','тайван'],cn:['china','китай'],in:['india','инди'],au:['australia','австрал'],ca:['canada','канад'],br:['brazil','бразил'],ae:['emirates','dubai','оаэ','эмират','дубай'],il:['israel','израил'],cz:['czech','чехи','prague'],ro:['romania','румын'],lv:['latvia','латви','riga'],lt:['lithuania','литв'],ee:['estonia','эстони'],kz:['kazakhstan','казахстан'],ge:['georgia','грузи'],am:['armenia','армени'],az:['azerbaijan','азербайдж'],by:['belarus','беларус']};
+const FLAG_CODES=new Set(['ae','al','am','ar','at','au','az','bd','be','bg','bh','br','by','ca','ch','cl','cn','cy','cz','de','dk','ee','eg','es','fi','fr','gb','ge','gr','hk','hr','hu','id','ie','il','in','iq','ir','is','it','jp','kg','kr','kw','kz','lk','lt','lu','lv','md','me','mk','mn','mt','mx','my','na','nl','no','np','ph','pk','pl','pt','qa','ro','rs','ru','sa','se','sg','si','sk','th','tj','tr','tw','ua','us','uz','vn','xk','za']); // все флаги из www/flags (эмодзи-детект работает для всех, что есть в бандле)
+function countryCode(name){
+  if(!name) return null;
+  // эмодзи-флаг
+  const arr=Array.from(name);
+  for(let i=0;i<arr.length-1;i++){
+    const a=arr[i].codePointAt(0),b=arr[i+1].codePointAt(0);
+    if(a>=0x1f1e6&&a<=0x1f1ff&&b>=0x1f1e6&&b<=0x1f1ff){
+      const c=String.fromCharCode(97+(a-0x1f1e6))+String.fromCharCode(97+(b-0x1f1e6));
+      if(c==='uk') return 'gb';
+      if(FLAG_CODES.has(c)) return c;
+    }
+  }
+  const lo=name.toLowerCase();
+  for(const [code,words] of Object.entries(FLAG_NAMES)) for(const w of words) if(lo.includes(w)) return code;
+  for(const tok of lo.split(/[^a-z]+/)){ if(tok==='uk') return 'gb'; if(tok.length===2&&FLAG_CODES.has(tok)) return tok; }
+  return null;
+}
+function flagEmoji(name){
+  const arr=Array.from(name||'');
+  for(let i=0;i<arr.length-1;i++){
+    const a=arr[i].codePointAt(0),b=arr[i+1].codePointAt(0);
+    if(a>=0x1f1e6&&a<=0x1f1ff&&b>=0x1f1e6&&b<=0x1f1ff) return arr[i]+arr[i+1];
+  }
+  return '';
+}
+// Служебные политики mihomo — у них нет страны, но пустой серый прямоугольник
+// выглядит как «сломалось». Даём им понятный глиф.
+const POLICY_ICON={'DIRECT':'⇢','REJECT':'✕','REJECT-DROP':'✕','PASS':'⇥','COMPATIBLE':'∅','GLOBAL':'⊕'};
+function flagImg(name,cls){
+  const c=countryCode(name);
+  if(c) return `<img class="${cls}" src="flags/${c}.svg" alt="">`;
+  // нет SVG — показываем эмодзи-флаг из имени (Босния, Камбоджа и т.п.)
+  const e=flagEmoji(name);
+  if(e) return `<span class="${cls} ico-badge" style="font-size:15px">${e}</span>`;
+  const pol=POLICY_ICON[String(name||'').trim().toUpperCase()];
+  if(pol) return `<span class="${cls} ico-badge">${pol}</span>`;
+  // группы без страны (AI, Торрент, Зарубежные сайты) — буква вместо пустого блока
+  const letter=(cleanName(name||'').trim()[0]||'·').toUpperCase();
+  return `<span class="${cls} ico-badge">${esc(letter)}</span>`;
+}
+// Экранирование перед вставкой в DOM. Имена узлов приходят из подписки — то есть
+// снаружи; без экранирования разметка из имени выполнилась бы в WebView, где доступен
+// мост к нативному VPN-плагину.
+function esc(v){
+  return String(v==null?'':v)
+    .replace(/&/g,'&amp;').replace(/>/g,'&gt;')
+    .replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+}
+function cleanName(name){
+  return Array.from(name||'').filter(ch=>{const cp=ch.codePointAt(0);return !(cp>=0x1f1e6&&cp<=0x1f1ff);}).join('').replace(/^[\s|·・•\-–—_]+/,'').trim()||name;
+}
+function pingColor(p){return (p>0&&p<80)?'var(--ok)':(p<180)?'var(--mid)':'var(--bad)'}
+
+let tab='home';
+function go(t){
+  tab=t;
+  for(const v of document.querySelectorAll('.view')) v.classList.add('hidden');
+  document.getElementById('view-'+t).classList.remove('hidden');
+  for(const b of document.querySelectorAll('.nav button')) b.classList.toggle('active', b.dataset.tab===t);
+  if(t==='servers'){
+    if(connected){
+      if(!_proxies){
+        const cachedNow=cachedServers();
+        if(cachedNow){ document.getElementById('servers-sub').textContent=cachedNow.all.length+' УЗЛОВ · ПРЕВЬЮ'; renderPreviewServers(cachedNow.all); }
+        showServersBanner('updating','Обновляю список серверов…');
+      }
+      loadProxies().then(()=>{ if(_proxies){ showServersBanner('updated','✓ Обновлено'); setTimeout(hideServersBanner,2000); } });
+    } else {
+      previewServers();
+    }
+  }
+  if(t==='rules'){ applyPresetUi(); renderRules(); }
+  if(t==='chains') renderChains();
+  if(t==='apps') openAppsScreen();
+  if(t==='trigger') openTriggerScreen();
+  if(t==='pingcfg') openPingCfgScreen();
+}
+
+function showInfo(title, text){
+  document.getElementById('info-title').textContent=title;
+  document.getElementById('info-text').textContent=text;
+  document.getElementById('info-modal').classList.remove('hidden');
+}
+function closeInfoModal(){ document.getElementById('info-modal').classList.add('hidden'); }
+
+// ---------- Capacitor: нативный VPN-плагин ----------
+const BUILD = 'v0.19.0';
+// репозиторий форка на GitHub — отсюда проверяются обновления (Releases, не Actions-артефакты)
+const UPDATE_REPO = 'spr621674-eng/MisetaniBox-Fork';
+const Cap = window.Capacitor;
+const platform = (Cap && Cap.getPlatform) ? Cap.getPlatform() : 'web';
+const isNative = !!(Cap && Cap.isNativePlatform ? Cap.isNativePlatform() : (platform && platform!=='web'));
+const Vpn = (Cap && Cap.registerPlugin) ? Cap.registerPlugin('Vpn')
+          : (Cap && Cap.Plugins ? Cap.Plugins.Vpn : null);
+
+// ---------- диагностика (видимая в приложении) ----------
+let dbgLines=[];
+function dbg(msg){
+  const t=new Date().toISOString().substr(11,8);
+  dbgLines.push(t+' '+msg); if(dbgLines.length>60) dbgLines.shift();
+  const el=document.getElementById('dbg'); if(el){ el.classList.add('on'); el.textContent=dbgLines.join('\n'); el.scrollTop=el.scrollHeight; }
+}
+function copyDbg(){ try{ navigator.clipboard.writeText(dbgLines.join('\n')); toast('Лог скопирован'); }catch(e){} }
+window.addEventListener('error',e=>dbg('JS ERR: '+(e.message||e)));
+const API_BASE = 'http://127.0.0.1:9090';
+function safeJson(s){ try{ return JSON.parse(s); }catch{ return null; } }
+// запрос к API ядра: через нативный плагин (без CORS/mixed-content), с фолбэком на fetch в вебе
+async function core(method, path, body){
+  try{
+    if(Vpn && Vpn.coreRequest){
+      const r = await Vpn.coreRequest({ method, path, body: body!==undefined?JSON.stringify(body):undefined });
+      return { ok: r.status>=200 && r.status<300, status: r.status, data: r.body?safeJson(r.body):null, error: r.error };
+    }
+    const r = await fetch(API_BASE+path, { method, headers: body!==undefined?{'Content-Type':'application/json'}:{}, body: body!==undefined?JSON.stringify(body):undefined });
+    return { ok: r.ok, status: r.status, data: await r.json().catch(()=>null) };
+  }catch(e){ return { ok:false, status:0, data:null, error:String(e) }; }
+}
+function sleep(ms){ return new Promise(r=>setTimeout(r,ms)); }
+
+function getHwid(){
+  let h = localStorage.getItem('mise_hwid');
+  if(!h){ h = (crypto.randomUUID ? crypto.randomUUID() : String(Date.now())+Math.random()); localStorage.setItem('mise_hwid', h); }
+  return h;
+}
+// ---------- подписки (несколько, одна активная) ----------
+// mise_subs: [{id,name,url}], mise_subActive: id. mise_subUrl держим в синхроне —
+// на него завязаны нативные prefs (плитка/виджет/автозапуск).
+function subs(){
+  let list=[]; try{ list=JSON.parse(localStorage.getItem('mise_subs')||'[]'); }catch{ list=[]; }
+  if(!Array.isArray(list)) list=[];
+  // миграция со старой одиночной подписки
+  const legacy=localStorage.getItem('mise_subUrl')||'';
+  if(!list.length && legacy){ list=[{id:'s'+Date.now(), name:subName(legacy), url:legacy}]; saveSubs(list); setActiveSub(list[0].id); }
+  return list;
+}
+function saveSubs(list){ localStorage.setItem('mise_subs', JSON.stringify(list)); }
+function subName(url){ try{ return new URL(url).hostname; }catch{ return (url||'').replace(/^https?:\/\//,'').split('/')[0] || 'подписка'; } }
+function activeSubId(){ return localStorage.getItem('mise_subActive')||''; }
+function activeSub(){ const l=subs(); return l.find(s=>s.id===activeSubId()) || l[0] || null; }
+function setActiveSub(id){
+  localStorage.setItem('mise_subActive', id);
+  const s=subs().find(x=>x.id===id);
+  if(s) localStorage.setItem('mise_subUrl', s.url); // синхрон для нативной части
+  // список серверов/формат относятся к прошлой подписке
+  localStorage.removeItem('mise_lastServers'); localStorage.removeItem('mise_preferred'); localStorage.removeItem('mise_subFormat');
+}
+function getSubUrl(){ const s=activeSub(); return s ? s.url : (localStorage.getItem('mise_subUrl')||''); }
+function switchSub(id){
+  if(id===activeSubId()) return;
+  setActiveSub(id); renderSubs();
+  toast(connected ? 'Переподключитесь, чтобы применить' : 'Активная: '+(subs().find(s=>s.id===id)||{}).name);
+}
+function delSub(id, ev){
+  if(ev&&ev.stopPropagation) ev.stopPropagation();
+  const list=subs().filter(s=>s.id!==id);
+  saveSubs(list);
+  if(activeSubId()===id){ if(list.length) setActiveSub(list[0].id); else { localStorage.removeItem('mise_subActive'); localStorage.removeItem('mise_subUrl'); } }
+  renderSubs(); toast('Подписка удалена');
+}
+
+// ---------- User-Agent запроса подписки ----------
+// Панель выбирает формат ответа по UA: на clash-UA приходит YAML, на v2rayNG/Xray —
+// JSON Xray или список ссылок. Ядро понимает все три (конвертер внутри), поэтому UA
+// можно менять — это способ забрать подписку у панели, которая не знает про clash.
+const UA_DEFAULT='clash-meta/mihomo';
+const UA_PRESETS=[
+  {ua:'clash-meta/mihomo', t:'mihomo / clash', s:'YAML — РОДНОЙ ФОРМАТ ЯДРА'},
+  {ua:'v2rayNG/1.9.16',    t:'v2rayNG',        s:'СПИСОК ССЫЛОК ИЛИ XRAY JSON'},
+  {ua:'Xray/25.9.11',      t:'Xray',           s:'JSON КОНФИГ XRAY'},
+  {ua:'sing-box/1.11.0',   t:'sing-box',       s:'ЕСЛИ ПАНЕЛЬ ЗНАЕТ ТОЛЬКО ЕГО'},
+];
+function getUserAgent(){ return localStorage.getItem('mise_ua') || UA_DEFAULT; }
+function setUserAgent(ua){
+  const v=(ua||'').trim();
+  localStorage.setItem('mise_ua', v || UA_DEFAULT);
+  // формат подписки мог смениться вместе с UA — кэш серверов больше не про неё
+  localStorage.removeItem('mise_lastServers');
+  applyUaSub();
+}
+function applyUaSub(){ const el=document.getElementById('ua-sub'); if(el) el.textContent=getUserAgent().toUpperCase(); }
+
+// ---------- каомодзи-мордочка под брендом ----------
+const FACE_HAPPY=['^o^','^q^','^_^','XD','>ᴗ<','•‿•','\\o/','^ᴗ^'];
+const FACE_SLEEP=['-_-','._.','-.-','=_=','u_u','-_-zzz'];
+const rndFace=a=>a[Math.floor(Math.random()*a.length)];
+let faceBase='-_-';
+function setFace(on){
+  const el=document.getElementById('brand-face'); if(!el) return;
+  faceBase = on ? rndFace(FACE_HAPPY) : rndFace(FACE_SLEEP);
+  el.textContent=faceBase; el.classList.toggle('online',on);
+  if(on){ el.classList.add('pop'); setTimeout(()=>el.classList.remove('pop'),550); }
+}
+function blinkFace(){
+  const el=document.getElementById('brand-face'); if(!el||document.hidden) return;
+  el.textContent = connected ? '^_^' : 'u_u';
+  setTimeout(()=>{ el.textContent=faceBase; },150);
+}
+setInterval(blinkFace,5200);
+
+let connected=false, sessStart=0, sessTimer=null;
+const delays={}; // имя ноды -> пинг
+function setUiConnected(on){
+  connected=on;
+  setFace(on);
+  const big=document.getElementById('connect-big');
+  const sv=document.getElementById('status-val');
+  const connectEl=document.getElementById('connect');
+  const glyph=document.getElementById('power-glyph');
+  const label=document.getElementById('power-label');
+  connectEl.classList.toggle('on', on);
+  if(on){
+    big.innerHTML='ОТКЛЮ-<br>ЧИТЬСЯ'; sv.textContent='● ПОДКЛЮЧЕНО'; sv.style.color='var(--ok)';
+    if(glyph) glyph.textContent='◆'; if(label) label.textContent='ОТКЛЮЧИТЬСЯ';
+    if(!sessTimer){ sessStart=Date.now(); sessTimer=setInterval(()=>{
+      const s=Math.floor((Date.now()-sessStart)/1000);
+      document.getElementById('sess-time').textContent=String(Math.floor(s/60)).padStart(2,'0')+':'+String(s%60).padStart(2,'0');
+    },1000); }
+    startTraffic();
+    // Не оставляем экран серверов пустым на время подъёма ядра — если есть что
+    // показать из прошлого раза, показываем сразу, полоска сверху сообщит,
+    // что идёт обновление.
+    const cachedNow=cachedServers();
+    if(cachedNow){
+      document.getElementById('servers-sub').textContent=cachedNow.all.length+' УЗЛОВ · ПРЕВЬЮ';
+      renderPreviewServers(cachedNow.all);
+    }else{
+      document.getElementById('servers-sub').textContent='ЗАГРУЗКА';
+      setServersNote('Ядро скачивает подписку…');
+    }
+    showServersBanner('updating','Ядро скачивает актуальный список серверов…');
+    waitForServers();
+  }else{
+    big.innerHTML='ПОДКЛЮ-<br>ЧИТЬСЯ'; sv.textContent='○ ОТКЛЮЧЕНО'; sv.style.color='';
+    if(glyph) glyph.textContent='◇'; if(label) label.textContent='ПОДКЛЮЧИТЬСЯ';
+    clearInterval(sessTimer); sessTimer=null; document.getElementById('sess-time').textContent='00:00';
+    stopTraffic();
+    updateHomeServer('', null);
+    renderCachedServers();
+  }
+}
+function setStatusText(t){ const sv=document.getElementById('status-val'); if(sv) sv.textContent=t; }
+
+// ---------- защита кнопки подключения от гонок ----------
+// Без этого быстрый двойной тап (или просто медленный ответ ядра на слабом
+// устройстве) уходил в native как два параллельных start()/stop() — VPN мог
+// застревать в рваном состоянии. watchdog отдельно защищает от обратного случая:
+// если native почему-то вообще не прислал событие vpnState, кнопка не должна
+// зависать в «ПОДКЛЮЧЕНИЕ…» навсегда.
+let connectPending=false, connectWatchdog=null;
+function clearConnectWatchdog(){ if(connectWatchdog){ clearTimeout(connectWatchdog); connectWatchdog=null; } }
+function lockConnectBtn(){
+  connectPending=true;
+  const el=document.getElementById('connect'); if(el) el.classList.add('busy');
+  clearConnectWatchdog();
+  connectWatchdog=setTimeout(()=>{
+    if(!connectPending) return;
+    dbg('watchdog: нет ответа от VPN за 30с — сбрасываю состояние кнопки');
+    unlockConnectBtn();
+    setStatusText(connected ? '● ПОДКЛЮЧЕНО' : '○ ОТКЛЮЧЕНО');
+    toast('Не удалось получить ответ от VPN — попробуйте ещё раз');
+  }, 30000);
+}
+function unlockConnectBtn(){
+  connectPending=false;
+  const el=document.getElementById('connect'); if(el) el.classList.remove('busy');
+  clearConnectWatchdog();
+}
+
+async function toggleConnect(){
+  dbg('тап connect | native='+isNative+' plugin='+(!!Vpn)+' hasStart='+(!!(Vpn&&Vpn.start)));
+  if(connectPending){ dbg('игнор тапа: уже ждём ответа от предыдущего'); return; }
+  if(!isNative || !Vpn){ dbg('НЕ нативно → демо-режим (плагин недоступен!)'); setUiConnected(!connected); return; }
+  if(connected){
+    lockConnectBtn();
+    setStatusText('○ ОТКЛЮЧЕНИЕ…'); dbg('Vpn.stop()');
+    try{ await Vpn.stop(); }catch(e){ dbg('stop err: '+e); unlockConnectBtn(); }
+    return;
+  }
+  const sub=getSubUrl();
+  if(!sub){ toast('Сначала добавьте подписку'); go('subs'); openSubModal(); return; }
+  lockConnectBtn();
+  setStatusText('◌ ПОДКЛЮЧЕНИЕ…'); dbg('Vpn.start(sub='+sub.substr(0,28)+'…)');
+  const sm=splitMode();
+  const sApps=sm==='off'?[]:[...splitSelected];
+  dbg('split='+sm+' apps='+sApps.length);
+  const rulesList = buildRuleList();
+  const chainList = chains();
+  dbg('правил='+rulesList.length+' цепочек='+chainList.length);
+  try{ const r=await Vpn.start({ subUrl: sub, hwid: getHwid(), userAgent: getUserAgent(), splitMode: sm, splitApps: sApps, rules: rulesList, chains: chainList }); dbg('start() вернул: '+JSON.stringify(r||{})); }
+  catch(e){
+    unlockConnectBtn();
+    setStatusText('○ ОТКЛЮЧЕНО'); dbg('start() REJECT: '+(e&&e.message?e.message:e)); toast('Ошибка старта: '+(e&&e.message?e.message:e));
+  }
+}
+
+if(Vpn && Vpn.addListener){
+  Vpn.addListener('vpnState', (s)=>{
+    dbg('событие: '+s.state+(s.message?' — '+s.message:''));
+    if(s.state==='diag'){ dbg('ядро: '+String(s.message||'').trim().replace(/\n/g,' | ')); return; }
+    if(s.state==='uaTest'){
+      const parts=(s.message||'').split('|');
+      handleUaTestEvent(parts[0]||'', parts[1]||'', parts[2]||'');
+      return;
+    }
+    // любое финальное состояние снимает блокировку кнопки — ждать больше нечего
+    if(s.state==='connected'||s.state==='cached'||s.state==='disconnected'||s.state==='error') unlockConnectBtn();
+    if(s.state==='connected') setUiConnected(true);
+    else if(s.state==='cached'){
+      setUiConnected(true);
+      toast('⚠ '+(s.message||'работаю на закэшированной подписке'));
+      const cn=cachedServers();
+      showServersBanner('offline', 'Подписка недоступна — данные от '+(cn?fmtTime(cn.ts):'неизвестно'));
+    }
+    else if(s.state==='disconnected') setUiConnected(false);
+    else if(s.state==='error'){ setUiConnected(false); toast('VPN: '+(s.message||'ошибка')); }
+  });
+}
+
+// ---------- серверы из API ядра ----------
+function updateHomeServer(name, ping){
+  const f=document.getElementById('home-flag'), nm=document.getElementById('home-name'), mt=document.getElementById('home-meta'), pg=document.getElementById('home-ping');
+  if(!name){ f.style.display='none'; nm.textContent='Не выбран'; mt.textContent='ПОДПИСКА НЕ ПОДКЛЮЧЕНА'; pg.textContent=''; return; }
+  const c=countryCode(name);
+  if(c){ f.src='flags/'+c+'.svg'; f.style.display=''; } else f.style.display='none';
+  nm.textContent=cleanName(name); mt.textContent='АКТИВНЫЙ СЕРВЕР';
+  pg.textContent = (ping&&ping>0) ? ping+' мс' : ''; pg.style.color=ping?pingColor(ping):'';
+}
+
+function setServersNote(txt){ document.getElementById('server-list').innerHTML='<div class="list-note">'+txt+'</div>'; }
+
+// ---------- полоска состояния над списком серверов ----------
+function showServersBanner(kind, text){
+  const b=document.getElementById('servers-banner'); if(!b) return;
+  b.className='servers-banner '+kind;
+  b.innerHTML='<span class="dot"></span><span>'+esc(text)+'</span>';
+}
+function hideServersBanner(){
+  const b=document.getElementById('servers-banner'); if(!b) return;
+  b.classList.add('hidden');
+}
+function fmtTime(ts){
+  const d=new Date(ts||Date.now());
+  return String(d.getHours()).padStart(2,'0')+':'+String(d.getMinutes()).padStart(2,'0');
+}
+function cachedServers(){
+  const c=safeJson(localStorage.getItem('mise_lastServers'));
+  if(!c || !Array.isArray(c.all) || !c.all.length) return null;
+  // Кэш мог быть сохранён ДО того, как появился фильтр мусорных DNS-псевдоузлов —
+  // без этого старый мусор продолжал бы висеть в localStorage и показываться
+  // здесь бесконечно, даже после того как сам парсер уже почищен.
+  const clean=filterJunkNames(c.all);
+  if(!clean.length) return null;
+  return clean.length===c.all.length ? c : {...c, all:clean};
+}
+
+// ---------- классические группы-селекторы (как FlClash/mihomo) ----------
+let _proxies=null, expandedGroups={};
+function q(s){ return String(s).replace(/\\/g,'\\\\').replace(/'/g,"\\'"); }
+function isGroup(p){ return p && Array.isArray(p.all); }
+function isSelector(p){ return p && String(p.type||'').toLowerCase()==='selector'; }
+// порядок групп берём из GLOBAL.all (мihomo хранит там порядок конфига), GLOBAL прячем —
+// кроме режима «Глобально», где это единственная нужная группа (см. ниже)
+function orderedGroups(P){
+  // В режиме «Глобально» правила не участвуют — весь трафик идёт через один
+  // выбранный узел из служебной группы GLOBAL, остальные группы не имеют смысла.
+  if(curMode()==='global' && P['GLOBAL']) return ['GLOBAL'];
+  // прячем GLOBAL и группы с hidden:true (mihomo помечает служебные — как во FlClash)
+  const names=Object.keys(P).filter(n=>isGroup(P[n]) && n!=='GLOBAL' && !P[n].hidden);
+  const gl=(P['GLOBAL']&&Array.isArray(P['GLOBAL'].all))?P['GLOBAL'].all.filter(n=>names.includes(n)):[];
+  const order=gl.slice();
+  for(const n of names) if(!order.includes(n)) order.push(n);
+  return order;
+}
+// «основная» группа для главного экрана — первый селектор (лучше с именем про основной трафик)
+function pickMainGroup(P, order){
+  if(curMode()==='global' && P['GLOBAL']) return 'GLOBAL';
+  const sel=order.filter(n=>isSelector(P[n]));
+  return sel.find(n=>/зарубеж|proxy|select|节点|節点|fast|быстр|основ|main/i.test(n)) || sel[0] || order[0] || null;
+}
+async function loadProxies(){
+  if(!connected) return;
+  const r=await core('GET','/proxies');
+  if(!r.ok || !r.data || !r.data.proxies){
+    document.getElementById('servers-sub').textContent='ПОДКЛЮЧЕНИЕ…';
+    setServersNote('Ядро ещё поднимается… подождите пару секунд. Если долго — проверьте подписку.');
+    return;
+  }
+  _proxies=r.data.proxies; renderProxies();
+}
+function renderProxies(){
+  const P=_proxies; if(!P) return;
+  const order=orderedGroups(P);
+  if(!order.length){
+    document.getElementById('servers-sub').textContent='ЗАГРУЗКА';
+    setServersNote('Ядро загружает конфиг. Если пусто — ссылка недоступна или это не clash/mihomo-конфиг.');
+    return;
+  }
+  document.getElementById('servers-sub').textContent=order.length+' ГРУПП';
+  const ping=n=>{
+    const d=delays[n]; if(d===undefined) return '';
+    if(pingMode()==='strict'){
+      return d>0 ? `<span class="ping" style="color:var(--ok)">✓ работает</span>` : `<span class="ping" style="color:var(--bad)">✕ недоступен</span>`;
+    }
+    return d>0?`<span class="ping" style="color:${pingColor(d)}">${d} мс</span>`:`<span class="ping" style="color:var(--bad)">—</span>`;
+  };
+  const GROUP_TAG={selector:'СЕЛЕКТОР',urltest:'АВТО · ПО ПИНГУ',fallback:'ФОЛБЭК',loadbalance:'БАЛАНС',relay:'ЦЕПЬ'};
+  let html=`<div class="row" onclick="pingAll()"><div class="grow"><div class="t">Проверить задержки</div><div class="s">ПИНГ ВСЕХ СЕРВЕРОВ</div></div><span class="chev">⟳</span></div>`;
+  for(const gn of order){
+    const g=P[gn], sel=isSelector(g), open=!!expandedGroups[gn], now=g.now||'';
+    const type=String(g.type||'').toLowerCase();
+    const tag=GROUP_TAG[type]||type.toUpperCase();
+    const roBadge=sel?'':'<span class="ro-badge">только&nbsp;просмотр</span>';
+    html+=`<div class="row grp-row" onclick="toggleGroup('${q(gn)}')">${flagImg(now,'flag')}<div class="grow"><div class="t">${esc(gn)}</div><div class="s">${tag} · ${esc(cleanName(now))||'—'}</div></div>${ping(now)}${roBadge}<span class="chev">${open?'▴':'▾'}</span></div>`;
+    if(open){
+      html+=g.all.map(n=>{
+        const active=n===now;
+        return `<div class="row node-row"${sel?` onclick="selectNode('${q(gn)}','${q(n)}')"`:' style="opacity:.65"'}>${flagImg(n,'flag')}<div class="grow"><div class="t" style="font-size:14px">${esc(cleanName(n))}</div><div class="s">${active?'● ВЫБРАН':(sel?'':'АВТО')}</div></div>${ping(n)}</div>`;
+      }).join('');
+    }
+  }
+  document.getElementById('server-list').innerHTML=html;
+  const main=pickMainGroup(P,order);
+  if(main) updateHomeServer(P[main].now, delays[P[main].now]);
+}
+function toggleGroup(n){ expandedGroups[n]=!expandedGroups[n]; renderProxies(); }
+// показать сохранённый список серверов, когда туннель выключен
+function renderCachedServers(){
+  _proxies=null; expandedGroups={};
+  hideServersBanner();
+  const sub=document.getElementById('servers-sub'), list=document.getElementById('server-list');
+  sub.textContent='НЕ ПОДКЛЮЧЕНО';
+  list.innerHTML='<div class="list-note">Подключитесь, чтобы увидеть группы-селекторы подписки и выбрать сервер в каждой.</div>';
+}
+
+// ---------- превью серверов из подписки (без запуска VPN) ----------
+function b64decode(s){ try{ return decodeURIComponent(escape(atob(s.replace(/\s+/g,'')))); }catch(e){ try{ return atob(s.replace(/\s+/g,'')); }catch{ return ''; } } }
+function parseV2rayNames(text){
+  const t=text.trim(); let body=t;
+  if(/^[A-Za-z0-9+/=\s]+$/.test(t) && t.length>40){ const d=b64decode(t); if(d.includes('://')) body=d; }
+  if(!body.includes('://')) return [];
+  const names=[];
+  for(const line of body.split(/\r?\n/)){
+    const l=line.trim(); const h=l.indexOf('#'); if(!l.includes('://')||h<0) continue;
+    try{ names.push(decodeURIComponent(l.slice(h+1))); }catch{ names.push(l.slice(h+1)); }
+  }
+  return names;
+}
+function parseClashNames(text){
+  if(!/proxies\s*:/.test(text)) return [];
+  const m=text.match(/(?:^|\n)proxies\s*:\s*\n([\s\S]*?)(?:\n[a-zA-Z][\w-]*\s*:|\s*$)/);
+  const block = m ? m[1] : '';
+  // Ключ name должен стоять в начале строки (можно после «- » или «- {»). Без этой
+  // привязки в список попадали grpc-service-name и early-data-header-name: внутри них
+  // тоже есть слово name, и на границе после дефиса оно матчилось как отдельный ключ.
+  const names=[]; const re=/(?:^|\n)[ \t]*(?:-[ \t]*\{?[ \t]*)?name[ \t]*:[ \t]*(['"]?)([^'"\n,}]+)\1/g; let x;
+  while((x=re.exec(block))){ const n=x[2].trim(); if(n) names.push(n); }
+  return filterJunkNames(names);
+}
+// Служебные DNS-псевдоузлы (просто политики DIRECT/REJECT под разными именами,
+// иногда с «&параметрами») — мусор для превью, не настоящие сервера. Вынесено
+// отдельно, потому что применяется не только к свежескачанному списку, но и к
+// уже ЗАКЭШИРОВАННОМУ (см. cachedServers()) — иначе то, что было сохранено в
+// localStorage ДО этого фильтра, продолжало бы показываться из кэша как есть.
+function filterJunkNames(names){
+  const JUNK=new Set(['DIRECT','REJECT','REJECT-DROP','PASS','COMPATIBLE','GLOBAL','DNS-SELECTOR']);
+  const clean=names.filter(n=>{
+    const up=String(n).trim().toUpperCase();
+    if(JUNK.has(up)) return false;
+    if(up.startsWith('DIRECT&')||up.startsWith('REJECT&')||up.startsWith('DNS-SELECTOR&')) return false;
+    return true;
+  });
+  return [...new Set(clean)];
+}
+// Есть ли в статическом теле подписки proxy-providers: — если да, часть (или все)
+// реальные сервера подгружаются ядром динамически при подключении, и то, что видно
+// в превью ДО подключения, может быть неполным или отсутствовать вовсе.
+function hasDynamicProviders(text){ return /(?:^|\n)proxy-providers\s*:\s*\n/.test(text); }
+function parseSubNames(text){ const v=parseV2rayNames(text); return v.length?v:parseClashNames(text); }
+
+function getPreferred(){ return localStorage.getItem('mise_preferred'); }
+function preSelect(name){
+  localStorage.setItem('mise_preferred', name); toast('Сервер по умолчанию: '+cleanName(name));
+  // Синхронизация с нативной стороной — иначе автовключение по приложению, плитка и
+  // автозапуск после перезагрузки (где WebView не открыт) не узнают о выборе и
+  // подключатся через дефолтный узел ядра вместо выбранного.
+  if(Vpn && Vpn.setPreferredServer){ Vpn.setPreferredServer({name}).catch(()=>{}); }
+  const c=safeJson(localStorage.getItem('mise_lastServers')); if(c&&c.all) renderPreviewServers(c.all);
+}
+function renderPreviewServers(names){
+  const pref=getPreferred();
+  document.getElementById('servers-sub').textContent=names.length+' УЗЛОВ · ПРЕВЬЮ';
+  document.getElementById('server-list').innerHTML=
+    '<div class="list-note">Пинг и подключение — после запуска VPN. Тап — выбрать сервер по умолчанию.</div>'+
+    names.map(n=>{
+      const active=n===pref;
+      return `<div class="row" onclick="preSelect('${n.replace(/'/g,"\\'")}')">${flagImg(n,'flag')}<div class="grow"><div class="t">${esc(cleanName(n))}</div><div class="s">${active?'● ВЫБРАН':''}</div></div></div>`;
+    }).join('');
+}
+async function previewServers(){
+  const sub=getSubUrl();
+  const subEl=document.getElementById('servers-sub'), list=document.getElementById('server-list');
+  if(!sub){ hideServersBanner(); subEl.textContent='НЕТ ПОДПИСКИ'; list.innerHTML='<div class="list-note">Добавьте подписку на вкладке «Подписки».</div>'; return; }
+  const cached=cachedServers();
+  // Сразу показываем то, что уже знаем — не оставляем экран пустым на время
+  // сетевого запроса. Обновление идёт в фоне, полоска сверху покажет, что сейчас
+  // происходит: обновляется / обновилось / не вышло.
+  if(cached){
+    subEl.textContent=cached.all.length+' УЗЛОВ · ПРЕВЬЮ';
+    renderPreviewServers(cached.all);
+    showServersBanner('updating','Обновляю список серверов…');
+  }else{
+    subEl.textContent='ЗАГРУЗКА…'; list.innerHTML='<div class="list-note">Загружаю список серверов из подписки…</div>';
+    showServersBanner('updating','Загружаю список серверов…');
+  }
+  if(!Vpn || !Vpn.fetchSub){ if(!cached) renderCachedServers(); hideServersBanner(); return; }
+  const r=await Vpn.fetchSub({url:sub, hwid:getHwid(), userAgent:getUserAgent()});
+  if(!r || r.status<200 || r.status>=300 || !r.body){
+    dbg('fetchSub status='+(r&&r.status)+' err='+((r&&r.error)||''));
+    if(cached){ showServersBanner('offline','Нет соединения — показаны данные от '+fmtTime(cached.ts)); }
+    else { renderCachedServers(); hideServersBanner(); }
+    return;
+  }
+  // fetchSub отдаёт уже сконвертированный mihomo-YAML, каким бы ни был формат панели
+  if(r.format){ dbg('формат подписки: '+r.format+' узлов='+(r.proxies||0)+' групп='+(r.groups||0)); localStorage.setItem('mise_subFormat', r.formatLabel||r.format); }
+  if(r.notes) dbg('конвертер: '+String(r.notes).replace(/\n/g,' | '));
+  if(r.error) dbg('fetchSub: '+r.error);
+  // Для сконвертированных форматов имена приходят от самого конвертера: он уже знает,
+  // что узлы балансировщика предлагаются через группу, а не по отдельности.
+  // Для сквозного mihomo-конфига их всё ещё приходится вытаскивать из YAML.
+  const names=(r.names && r.names.length) ? r.names : parseSubNames(r.body);
+  dbg('превью: '+names.length+' серверов из подписки');
+  if(!names.length){
+    // Реальные сервера могут отсутствовать в статическом теле вовсе (подгружаются
+    // ядром динамически через proxy-providers при подключении) — тогда пустой
+    // список это не ошибка парсинга, а особенность конкретной подписки. Раньше в
+    // этом случае показывался мусор (служебные DNS-псевдоузлы) вместо честного
+    // объяснения — теперь мусор отфильтрован, а сюда попадает именно этот случай.
+    if(r.body && hasDynamicProviders(r.body)){
+      subEl.textContent='ПОСЛЕ ПОДКЛЮЧЕНИЯ';
+      list.innerHTML='<div class="list-note">Эта подписка подгружает список серверов сама уже во время работы туннеля — до подключения его просто неоткуда взять. Нажмите «Подключиться», полный список появится здесь сразу после установления соединения.</div>';
+      hideServersBanner();
+      return;
+    }
+    if(cached){ showServersBanner('offline','Не удалось обновить — показаны данные от '+fmtTime(cached.ts)); }
+    else{ subEl.textContent='—'; list.innerHTML='<div class="list-note">Не удалось разобрать список. '+esc(r.error||'Формат подписки не распознан.')+'</div>'; hideServersBanner(); }
+    return;
+  }
+  localStorage.setItem('mise_lastServers', JSON.stringify({all:names, now:getPreferred(), ts:Date.now()}));
+  renderSubs();
+  renderPreviewServers(names);
+  showServersBanner('updated','✓ Список серверов обновлён');
+  setTimeout(hideServersBanner, 2500);
+}
+// после коннекта ждём, пока ядро скачает подписку и поднимет API
+async function waitForServers(){
+  // Раньше режим маршрутизации (rule/global/direct) применялся через слепой
+  // setTimeout(2.5с) после старта — на медленном холодном запуске ядро иногда
+  // не успевало подняться за это время, и режим тихо терялся без ошибки.
+  // Теперь применяем его сразу, как только API ядра реально ответило.
+  let modeApplied=false;
+  for(let i=0;i<20;i++){
+    if(!connected) return;
+    const r=await core('GET','/proxies');
+    if(r.ok && r.data){
+      if(!modeApplied){ modeApplied=true; applyModeToCore(); }
+      // Раньше тут был захардкожен GROUP='PROXY' — в режиме «Глобально» реальная
+      // группа роутинга называется GLOBAL, а не PROXY, и предпочтительный сервер
+      // молча писался/читался не в ту группу. pickMainGroup() уже умеет это отличать
+      // (используется в renderProxies()) — берём ту же логику и здесь.
+      const P=r.data.proxies;
+      const activeGroup = P ? pickMainGroup(P, orderedGroups(P)) : null;
+      const g=activeGroup && P && P[activeGroup];
+      if(g && g.all && g.all.length){
+        const pref=getPreferred();
+        if(pref && g.all.includes(pref) && pref!==g.now){ await core('PUT','/proxies/'+encodeURIComponent(activeGroup),{name:pref}); }
+        loadProxies();
+        showServersBanner('updated','✓ Список серверов обновлён');
+        setTimeout(hideServersBanner, 2500);
+        return;
+      }
+      if(i===3){ core('PUT','/providers/proxies/main'); } // подтолкнуть обновление провайдера
+    }
+    loadProxies();
+    await sleep(batterySaverOn?3000:1500);
+  }
+  // не дождались за все попытки — не стираем то, что уже показано (превью/кэш),
+  // просто честно сообщаем, что свежих данных получить не удалось
+  if(!modeApplied) applyModeToCore(); // последняя попытка — вдруг API поднялось прямо к концу цикла
+  const cached=cachedServers();
+  showServersBanner('offline', cached ? ('Не удалось обновить — показаны данные от '+fmtTime(cached.ts)) : 'Не удалось получить список серверов');
+}
+// ---------- настройки проверки серверов (адрес + тип) ----------
+const PING_PRESETS={
+  gstatic:'http://www.gstatic.com/generate_204',
+  google:'http://www.google.com/generate_204',
+  cloudflare:'http://cp.cloudflare.com/generate_204',
+};
+function pingPreset(){ return localStorage.getItem('mise_ping_preset')||'gstatic'; }
+function pingCustomUrl(){ return localStorage.getItem('mise_ping_custom_url')||''; }
+function pingUrl(){
+  const custom=pingCustomUrl().trim();
+  if(custom) return custom;
+  return PING_PRESETS[pingPreset()]||PING_PRESETS.gstatic;
+}
+function pingMode(){ return localStorage.getItem('mise_ping_mode')||'numeric'; }
+function setPingPreset(p){
+  localStorage.setItem('mise_ping_preset', p);
+  localStorage.setItem('mise_ping_custom_url', ''); // пресет и свой адрес взаимоисключающие
+  const inp=document.getElementById('ping-custom-url'); if(inp) inp.value='';
+  refreshPingCfgUi(); refreshPingSettingsSub();
+}
+function saveCustomPingUrl(){
+  const v=(document.getElementById('ping-custom-url').value||'').trim();
+  localStorage.setItem('mise_ping_custom_url', v);
+  refreshPingCfgUi(); refreshPingSettingsSub();
+}
+function setPingMode(m){
+  localStorage.setItem('mise_ping_mode', m);
+  refreshPingCfgUi(); refreshPingSettingsSub();
+}
+function refreshPingSettingsSub(){
+  const el=document.getElementById('pingcfg-sub'); if(!el) return;
+  const custom=pingCustomUrl().trim();
+  const label = custom ? 'СВОЙ АДРЕС' : pingPreset().toUpperCase();
+  const modeLabel = pingMode()==='strict' ? 'ЖЁСТКАЯ ПРОВЕРКА' : 'HTTP GET';
+  el.textContent = label+' · '+modeLabel;
+}
+function openPingCfgScreen(){
+  const inp=document.getElementById('ping-custom-url'); if(inp) inp.value=pingCustomUrl();
+  refreshPingCfgUi();
+}
+function refreshPingCfgUi(){
+  const custom=pingCustomUrl().trim();
+  const preset=pingPreset();
+  for(const p of ['gstatic','google','cloudflare']){
+    const el=document.getElementById('pp-'+p);
+    if(el) el.textContent = (!custom && preset===p) ? '●' : '';
+  }
+  const mNum=document.getElementById('ping-mode-numeric'), mStrict=document.getElementById('ping-mode-strict');
+  const m=pingMode();
+  if(mNum) mNum.classList.toggle('active', m==='numeric');
+  if(mStrict) mStrict.classList.toggle('active', m==='strict');
+  const hint=document.getElementById('ping-mode-hint');
+  if(hint) hint.textContent = m==='strict'
+    ? 'Жёсткая проверка — просто «работает» или «недоступен», без миллисекунд. Полезно, если важен сам факт работоспособности, а не скорость.'
+    : 'HTTP GET — показывает точное время ответа в миллисекундах через сам сервер.';
+}
+
+async function selectNode(group, name){
+  const r=await core('PUT','/proxies/'+encodeURIComponent(group),{name});
+  if(r.ok){ toast(cleanName(name)); loadProxies(); }
+  else toast('Не удалось выбрать (для авто-групп выбор недоступен)');
+}
+// Проверяет пачками, а не все ~180 серверов одним залпом: разом через локальный
+// TUN/gVisor стек — часть запросов раньше просто не успевала выполниться не
+// потому что сервер недоступен, а из-за перегрузки самого локального стека,
+// отсюда и были «непропинговавшиеся» сервера в списке.
+async function pingBatch(names, url, timeout, batchSize){
+  for(let i=0;i<names.length;i+=batchSize){
+    const chunk=names.slice(i,i+batchSize);
+    await Promise.all(chunk.map(async n=>{
+      try{
+        const rr=await core('GET','/proxies/'+encodeURIComponent(n)+'/delay?timeout='+timeout+'&url='+encodeURIComponent(url));
+        delays[n]=(rr.data && typeof rr.data.delay==='number')?rr.data.delay:-1;
+      }catch(e){ delays[n]=-1; }
+    }));
+    renderProxies(); // промежуточный рендер — видно прогресс, а не ждать всё сразу
+  }
+}
+// Раньше проверялись ТОЛЬКО «голые» листовые сервера (не завёрнутые в группу) —
+// у многих подписок (как у этой) почти каждая «страна» в списке на самом деле
+// group-селектор с одним реальным узлом внутри, и такие никогда не пинговались
+// вообще. /group/{имя}/delay — штатный эндпоинт mihomo, пингует РАЗОМ все узлы
+// внутри группы и возвращает {имяУзла: мс, ...} — одним запросом на группу,
+// не по одному на каждый вложенный узел.
+async function pingGroupsBatch(groupNames, url, timeout, batchSize){
+  for(let i=0;i<groupNames.length;i+=batchSize){
+    const chunk=groupNames.slice(i,i+batchSize);
+    await Promise.all(chunk.map(async gn=>{
+      try{
+        const rr=await core('GET','/group/'+encodeURIComponent(gn)+'/delay?timeout='+timeout+'&url='+encodeURIComponent(url));
+        if(rr.data && typeof rr.data==='object'){
+          for(const [node,val] of Object.entries(rr.data)) delays[node]=(typeof val==='number')?val:-1;
+        }
+      }catch(e){}
+    }));
+    renderProxies();
+  }
+}
+async function pingAll(){
+  if(!connected) return;
+  // Всегда берём СВЕЖИЙ список у ядра прямо перед проверкой — если подписка
+  // недавно обновилась, старый _proxies мог не содержать новые узлы, и они
+  // просто не попадали в проверку вообще (оставались без пинга совсем).
+  const r=await core('GET','/proxies');
+  if(r.ok&&r.data) _proxies=r.data.proxies;
+  const P=_proxies; if(!P){ toast('Нет данных'); return; }
+  const skip=['DIRECT','REJECT','REJECT-DROP','PASS','COMPATIBLE','GLOBAL'];
+  const leafs=[...new Set(Object.keys(P).filter(n=>!isGroup(P[n]) && !skip.includes(n)))];
+  const groupNames=[...new Set(Object.keys(P).filter(n=>isGroup(P[n]) && n!=='GLOBAL'))];
+  if(!leafs.length && !groupNames.length){ toast('Нет серверов'); return; }
+  toast('Проверка '+(leafs.length+groupNames.length)+' серверов…');
+  await Promise.all([
+    pingBatch(leafs, pingUrl(), 3000, 12),
+    pingGroupsBatch(groupNames, pingUrl(), 3000, 4),
+  ]);
+  renderProxies();
+  toast('Проверка завершена');
+}
+
+// ---------- подписка (модалка вместо prompt) ----------
+function addSubscription(){ openSubModal(); }
+function openSubModal(){
+  const inp=document.getElementById('sub-input'); inp.value=''; // всегда добавляем новую
+  document.getElementById('sub-modal').classList.remove('hidden');
+  setTimeout(()=>inp.focus(),50);
+}
+function closeSubModal(){ document.getElementById('sub-modal').classList.add('hidden'); }
+
+function openUaModal(){
+  const inp=document.getElementById('ua-input'); inp.value=getUserAgent();
+  renderUaPresets();
+  document.getElementById('ua-modal').classList.remove('hidden');
+}
+function closeUaModal(){ document.getElementById('ua-modal').classList.add('hidden'); }
+function renderUaPresets(){
+  const cur=(document.getElementById('ua-input').value||'').trim();
+  document.getElementById('ua-presets').innerHTML=UA_PRESETS.map(p=>
+    `<div class="row" onclick="pickUaPreset('${p.ua.replace(/'/g,"\\'")}')"><div class="grow"><div class="t">${esc(p.t)}</div><div class="s">${esc(p.s)}</div></div>${p.ua===cur?'<span class="chev">●</span>':''}</div>`
+  ).join('');
+}
+function pickUaPreset(ua){ document.getElementById('ua-input').value=ua; renderUaPresets(); }
+function saveUaModal(){
+  const was=getUserAgent();
+  setUserAgent(document.getElementById('ua-input').value);
+  closeUaModal();
+  if(getUserAgent()!==was){
+    // формат ответа панели меняется вместе с UA — перечитываем подписку
+    localStorage.removeItem('mise_subFormat');
+    renderSubs();
+    toast('User-Agent: '+getUserAgent());
+    if(getSubUrl()) previewServers();
+  }
+}
+function renderSubs(){
+  const list=subs(), act=activeSubId(), box=document.getElementById('subs-list');
+  const cnt=document.getElementById('subs-count');
+  if(cnt) cnt.textContent = list.length ? (list.length===1?'1 ПОДПИСКА':list.length+' ПОДПИСОК') : 'НЕТ ПОДПИСОК';
+  if(!box) return;
+  if(!list.length){ box.innerHTML='<div class="list-note">Добавьте ссылку на подписку — mihomo YAML, Xray JSON или список ссылок.</div>'; return; }
+  const fmt=localStorage.getItem('mise_subFormat');
+  box.innerHTML=list.map(s=>{
+    const on=s.id===act;
+    const sub=on ? ('АКТИВНА'+(fmt?' · '+fmt.toUpperCase():'')) : esc(s.url.replace(/^https?:\/\//,'').slice(0,38));
+    return `<div class="row" onclick="switchSub('${q(s.id)}')">`+
+      `<span class="flag" style="background:${on?'var(--ok)':'var(--ln)'}"></span>`+
+      `<div class="grow"><div class="t">${esc(s.name)}</div><div class="s">${sub}</div></div>`+
+      `<span class="chev" onclick="delSub('${q(s.id)}',event)">✕</span></div>`;
+  }).join('');
+}
+
+// ---------- режим маршрутизации ----------
+const MODES=[{v:'rule',l:'ПРАВИЛА'},{v:'global',l:'ГЛОБАЛЬНО'},{v:'direct',l:'ПРЯМОЙ'}];
+function curMode(){ return localStorage.getItem('mise_mode')||'rule'; }
+function applyModeLabel(){ const m=MODES.find(x=>x.v===curMode())||MODES[0]; const el=document.getElementById('mode-lbl'); if(el) el.textContent=m.l; }
+async function applyModeToCore(){
+  if(!connected) return;
+  await core('PATCH','/configs',{mode:curMode()});
+}
+async function cycleMode(){
+  const i=MODES.findIndex(x=>x.v===curMode()); const next=MODES[(i+1)%MODES.length];
+  localStorage.setItem('mise_mode', next.v); applyModeLabel();
+  // Раньше режим жил ТОЛЬКО в localStorage WebView — при запуске VPN из плитки/
+  // автовключения по приложению/автозапуска после перезагрузки (интерфейс не открыт)
+  // нативная сторона о выбранном режиме не знала вообще, и «Глобально» тихо
+  // откатывался на «Правила» при любом фоновом подключении. Дублируем в нативные prefs.
+  if(Vpn && Vpn.setRoutingMode){ try{ await Vpn.setRoutingMode({mode: next.v}); }catch(e){} }
+  if(connected){
+    await applyModeToCore();
+    // список групп зависит от режима (в «Глобально» — только один селектор GLOBAL)
+    if(_proxies) renderProxies();
+  }
+  toast('Режим: '+next.l);
+}
+
+// ---------- о приложении ----------
+function showAbout(){ toast('Misetanibox '+BUILD+' · авторы: rakexzp, @14Unight'); }
+
+
+// ---------- ПРАВИЛА ----------
+// Пресеты разворачиваются в правила mihomo при сборке конфига.
+const RULE_PRESETS = {
+  ru:  ['GEOIP,RU,DIRECT'],
+  ads: ['GEOSITE,category-ads-all,REJECT'],
+  lan: ['GEOIP,PRIVATE,DIRECT,no-resolve'],
+};
+function presetsOn(){ try{ return JSON.parse(localStorage.getItem('mise_presets')||'["lan"]'); }catch{ return ['lan']; } }
+function customRules(){ try{ return JSON.parse(localStorage.getItem('mise_rules')||'[]'); }catch{ return []; } }
+function saveCustomRules(list){ localStorage.setItem('mise_rules', JSON.stringify(list)); }
+
+// Итоговый список правил: свои — выше пресетов, MATCH дописывает нативная часть.
+function buildRuleList(){
+  const out = [...customRules()];
+  for(const k of presetsOn()) out.push(...(RULE_PRESETS[k]||[]));
+  return out;
+}
+function applyPresetUi(){
+  const on = presetsOn();
+  for(const k of ['ru','ads','lan']){
+    const el = document.getElementById('pr-'+k);
+    if(el) el.classList.toggle('on', on.includes(k));
+  }
+}
+function togglePreset(k, btn){
+  const on = presetsOn();
+  const i = on.indexOf(k);
+  if(i>=0) on.splice(i,1); else on.push(k);
+  localStorage.setItem('mise_presets', JSON.stringify(on));
+  btn.classList.toggle('on');
+  if(connected) toast('Применится при следующем подключении');
+}
+function renderRules(){
+  const list=document.getElementById('rules-list'), cnt=document.getElementById('rules-count');
+  if(!list) return;
+  const rules=customRules();
+  if(cnt) cnt.textContent = rules.length ? rules.length+' СВОИХ ПРАВИЛ' : 'НЕТ СВОИХ ПРАВИЛ';
+  list.innerHTML = rules.map((r,i)=>`<div class="row"><div class="grow"><div class="t" style="font-size:14px">${esc(r.split(',')[1]||'')}</div><div class="rule-line">${esc(r)}</div></div><span class="chev" onclick="delRule(${i})">✕</span></div>`).join('');
+}
+function delRule(i){ const r=customRules(); r.splice(i,1); saveCustomRules(r); renderRules(); if(connected) toast('Применится при следующем подключении'); }
+
+let ruleType='DOMAIN-SUFFIX', ruleTarget='PROXY';
+function openRuleModal(){ ruleType='DOMAIN-SUFFIX'; ruleTarget='PROXY'; document.getElementById('rule-value').value='';
+  document.querySelectorAll('[data-rt]').forEach(b=>b.classList.toggle('active', b.dataset.rt===ruleType));
+  document.querySelectorAll('[data-rtg]').forEach(b=>b.classList.toggle('active', b.dataset.rtg===ruleTarget));
+  document.getElementById('rule-modal').classList.remove('hidden'); }
+function closeRuleModal(){ document.getElementById('rule-modal').classList.add('hidden'); }
+function setRuleType(b){ ruleType=b.dataset.rt; document.querySelectorAll('[data-rt]').forEach(x=>x.classList.toggle('active',x===b));
+  const inp=document.getElementById('rule-value');
+  inp.placeholder = ruleType==='IP-CIDR' ? 'например: 1.2.3.0/24' : (ruleType==='PROCESS-NAME' ? 'например: com.google.chrome' : 'например: example.com'); }
+function setRuleTarget(b){ ruleTarget=b.dataset.rtg; document.querySelectorAll('[data-rtg]').forEach(x=>x.classList.toggle('active',x===b)); }
+function saveRule(){
+  let v=(document.getElementById('rule-value').value||'').trim();
+  if(!v){ toast('Введите значение'); return; }
+  if(v.includes(',')){ toast('Запятые в значении недопустимы'); return; }
+  // для IP-CIDR mihomo требует маску
+  if(ruleType==='IP-CIDR' && !v.includes('/')) v += '/32';
+  let rule = `${ruleType},${v},${ruleTarget}`;
+  if(ruleType==='IP-CIDR') rule += ',no-resolve';
+  const list=customRules(); list.push(rule); saveCustomRules(list);
+  closeRuleModal(); renderRules();
+  if(connected) toast('Применится при следующем подключении');
+}
+
+// ---------- ЦЕПОЧКИ ----------
+function chains(){ try{ return JSON.parse(localStorage.getItem('mise_chains')||'[]'); }catch{ return []; } }
+function saveChains(list){ localStorage.setItem('mise_chains', JSON.stringify(list)); refreshChainsSub(); }
+function refreshChainsSub(){
+  const el=document.getElementById('chains-sub'); if(!el) return;
+  const n=chains().length; el.textContent = n ? n+' ЦЕПОЧЕК' : 'НЕТ ЦЕПОЧЕК';
+}
+function renderChains(){
+  const list=document.getElementById('chain-list'); if(!list) return;
+  const cs=chains();
+  list.innerHTML = cs.length ? cs.map((c,i)=>
+    `<div class="row"><div class="grow"><div class="t">🔗 ${esc(c.name)}</div><div class="s">ЧЕРЕЗ ${esc(cleanName(c.entry).toUpperCase())}</div></div><span class="chev" onclick="delChain(${i})">✕</span></div>`
+  ).join('') : '<div class="list-note">Пока нет цепочек.</div>';
+  refreshChainsSub();
+}
+function delChain(i){ const c=chains(); c.splice(i,1); saveChains(c); renderChains(); if(connected) toast('Применится при следующем подключении'); }
+
+let chainEntry='';
+function openChainModal(){
+  chainEntry='';
+  document.getElementById('chain-name').value='';
+  document.getElementById('chain-search').value='';
+  renderChainNodes();
+  document.getElementById('chain-modal').classList.remove('hidden');
+}
+function closeChainModal(){ document.getElementById('chain-modal').classList.add('hidden'); }
+function chainNodeSource(){
+  const c = cachedServers();
+  return c ? c.all : [];
+}
+function renderChainNodes(){
+  const box=document.getElementById('chain-nodes'); if(!box) return;
+  const q=(document.getElementById('chain-search').value||'').trim().toLowerCase();
+  const all=chainNodeSource().filter(n=>!n.startsWith('🔗')&&!n.startsWith('⛓'));
+  const items=all.filter(n=>!q||n.toLowerCase().includes(q));
+  if(!items.length){ box.innerHTML='<div class="list-note">Нет серверов — подключитесь или обновите подписку.</div>'; return; }
+  box.innerHTML=items.slice(0,200).map(n=>
+    `<div class="chain-node${n===chainEntry?' on':''}" onclick="pickChainEntry('${n.replace(/'/g,"\\'")}')">${flagImg(n,'flag')}<div class="grow"><div class="t">${esc(cleanName(n))}</div></div></div>`
+  ).join('');
+}
+function pickChainEntry(n){ chainEntry=n; renderChainNodes(); }
+function saveChain(){
+  const name=(document.getElementById('chain-name').value||'').trim();
+  if(!name){ toast('Введите название'); return; }
+  if(!chainEntry){ toast('Выберите входной сервер'); return; }
+  const cs=chains();
+  if(cs.some(c=>c.name===name)){ toast('Такая цепочка уже есть'); return; }
+  cs.push({name, entry: chainEntry});
+  saveChains(cs); closeChainModal(); renderChains();
+  toast('Цепочка создана — выбери «🔗 '+name+'» в списке серверов');
+}
+
+// ---------- ОФОРМЛЕНИЕ: цвет акцента ----------
+const ACCENTS=['oklch(.76 .17 150)','oklch(.72 .19 25)','oklch(.75 .16 250)','oklch(.8 .16 85)','oklch(.72 .2 320)','oklch(.78 .13 195)'];
+function curAccent(){ return localStorage.getItem('mise_accent')||ACCENTS[0]; }
+function applyAccent(){ document.documentElement.style.setProperty('--ok', curAccent()); }
+function renderAccents(){
+  const row=document.getElementById('accent-row'); if(!row) return;
+  row.innerHTML=ACCENTS.map(c=>`<button class="accent-dot${c===curAccent()?' on':''}" style="background:${c}" onclick="setAccent('${c}')"></button>`).join('');
+}
+function setAccent(c){ localStorage.setItem('mise_accent', c); applyAccent(); renderAccents(); }
+
+// ---------- стиль главного экрана: текст или кнопка ----------
+function homeStyle(){ return localStorage.getItem('mise_home_style')||'text'; }
+function applyHomeStyleUi(){
+  const s=homeStyle();
+  const bText=document.getElementById('home-style-text'), bBtn=document.getElementById('home-style-button');
+  if(bText) bText.classList.toggle('active', s==='text');
+  if(bBtn) bBtn.classList.toggle('active', s==='button');
+  document.querySelector('.app').classList.toggle('home-style-button', s==='button');
+}
+function setHomeStyle(s){
+  localStorage.setItem('mise_home_style', s);
+  applyHomeStyleUi();
+}
+
+// ---------- обновления через релизы GitHub ----------
+let latestUpdate=null;
+function currentVersion(){ return BUILD.replace(/^v/i,''); }
+// сравнение вида "1.2.10" > "1.2.9" по числам, а не по алфавиту (иначе "1.2.10" < "1.2.9")
+function isNewerVersion(a,b){
+  const pa=String(a).split('.').map(n=>parseInt(n,10)||0);
+  const pb=String(b).split('.').map(n=>parseInt(n,10)||0);
+  for(let i=0;i<Math.max(pa.length,pb.length);i++){
+    const x=pa[i]||0, y=pb[i]||0;
+    if(x>y) return true;
+    if(x<y) return false;
+  }
+  return false;
+}
+async function checkForUpdate(silent){
+  const repo=UPDATE_REPO;
+  if(!Vpn||!Vpn.checkLatestRelease){ if(!silent) toast('Доступно только в приложении на устройстве'); return; }
+  try{
+    const r=await Vpn.checkLatestRelease({repo});
+    if(!r || r.status<200 || r.status>=300){
+      if(!silent) toast('Не удалось проверить обновление'+(r&&r.status?' ('+r.status+')':''));
+      return;
+    }
+    const j=safeJson(r.body);
+    if(!j){ if(!silent) toast('Некорректный ответ GitHub'); return; }
+    const tag=(j.tag_name||'').replace(/^v/i,'');
+    const asset=(j.assets||[]).find(a=>/\.apk$/i.test(a.name||''));
+    if(!tag||!asset){ if(!silent) toast('В последнем релизе нет APK-файла'); return; }
+    if(isNewerVersion(tag, currentVersion())){
+      latestUpdate={ version:tag, url:asset.browser_download_url, notes:j.body||'Без описания изменений.', name:asset.name };
+      showUpdateBanner();
+      if(!silent) toast('Доступна версия '+tag);
+    }else{
+      hideUpdateBanner();
+      if(!silent) toast('У вас установлена последняя версия');
+    }
+  }catch(e){ if(!silent) toast('Ошибка проверки обновления: '+e); }
+}
+function showUpdateBanner(){
+  const b=document.getElementById('update-banner'); if(!b||!latestUpdate) return;
+  document.getElementById('update-banner-version').textContent='Доступно обновление · v'+latestUpdate.version;
+  b.classList.remove('hidden');
+}
+function hideUpdateBanner(){ const b=document.getElementById('update-banner'); if(b) b.classList.add('hidden'); }
+function openUpdateModal(){
+  if(!latestUpdate) return;
+  document.getElementById('update-modal-version').textContent='v'+latestUpdate.version;
+  document.getElementById('update-modal-notes').textContent=latestUpdate.notes;
+  document.getElementById('update-modal-status').textContent='';
+  const btn=document.getElementById('update-download-btn');
+  btn.disabled=false; btn.textContent='Скачать и установить';
+  document.getElementById('update-modal').classList.remove('hidden');
+}
+function closeUpdateModal(){ document.getElementById('update-modal').classList.add('hidden'); }
+async function startUpdateDownload(){
+  if(!latestUpdate) return;
+  if(!Vpn||!Vpn.downloadUpdate){ toast('Доступно только в приложении на устройстве'); return; }
+  const btn=document.getElementById('update-download-btn');
+  const status=document.getElementById('update-modal-status');
+  btn.disabled=true;
+  try{
+    if(Vpn.canInstallUnknownApps){
+      const c=await Vpn.canInstallUnknownApps();
+      if(!(c&&c.on)){
+        status.textContent='Нужно разрешить установку из неизвестных источников — открываю настройки…';
+        if(Vpn.requestInstallUnknownApps) await Vpn.requestInstallUnknownApps();
+        btn.disabled=false;
+        return;
+      }
+    }
+    btn.textContent='Скачивание… 0%';
+    status.textContent='';
+    const r=await Vpn.downloadUpdate({url:latestUpdate.url});
+    btn.textContent='Открываю установщик…';
+    await Vpn.installUpdate({path:r.path});
+    closeUpdateModal();
+  }catch(e){
+    toast('Не удалось скачать обновление: '+(e&&e.message?e.message:e));
+    btn.disabled=false; btn.textContent='Скачать и установить';
+  }
+}
+if(Vpn && Vpn.addListener){
+  Vpn.addListener('updateProgress', (e)=>{
+    const btn=document.getElementById('update-download-btn');
+    if(btn && btn.disabled) btn.textContent='Скачивание… '+(e.percent||0)+'%';
+  });
+}
+
+
+// ---------- автозапуск (нативный prefs) ----------
+async function initAutostart(){
+  const b=document.getElementById('tgl-autostart'); if(!b||!Vpn||!Vpn.getAutostart) return;
+  try{ const r=await Vpn.getAutostart(); b.classList.toggle('on', !!(r&&r.on)); }catch(e){}
+}
+async function toggleAutostart(btn){
+  const on=!btn.classList.contains('on');
+  btn.classList.toggle('on',on);
+  if(Vpn&&Vpn.setAutostart){ try{ await Vpn.setAutostart({on}); }catch(e){ dbg('setAutostart err: '+e); } }
+  toast(on?'Автозапуск включён':'Автозапуск выключен');
+}
+
+// ---------- отключение по блокировке экрана (нативный prefs, аналог INCY) ----------
+async function initLockBehavior(){
+  const bd=document.getElementById('tgl-lock-disconnect');
+  const br=document.getElementById('tgl-lock-reconnect');
+  if(!bd||!br||!Vpn||!Vpn.getLockBehavior) return;
+  try{
+    const r=await Vpn.getLockBehavior();
+    bd.classList.toggle('on', !!(r&&r.disconnectOnLock));
+    br.classList.toggle('on', !!(r&&r.reconnectOnUnlock));
+  }catch(e){}
+}
+async function pushLockBehavior(){
+  const bd=document.getElementById('tgl-lock-disconnect');
+  const br=document.getElementById('tgl-lock-reconnect');
+  const disconnectOnLock=bd.classList.contains('on');
+  const reconnectOnUnlock=br.classList.contains('on');
+  if(Vpn&&Vpn.setLockBehavior){
+    try{ await Vpn.setLockBehavior({disconnectOnLock,reconnectOnUnlock}); }
+    catch(e){ dbg('setLockBehavior err: '+e); }
+  }
+}
+async function toggleLockDisconnect(btn){
+  const on=!btn.classList.contains('on');
+  btn.classList.toggle('on',on);
+  // выключили «отключать при блокировке» — «подключать при разблокировке» без него бессмысленен
+  if(!on){
+    const br=document.getElementById('tgl-lock-reconnect');
+    if(br) br.classList.remove('on');
+  }
+  await pushLockBehavior();
+  toast(on?'Отключение при блокировке включено':'Отключение при блокировке выключено');
+}
+async function toggleLockReconnect(btn){
+  const bd=document.getElementById('tgl-lock-disconnect');
+  if(!bd.classList.contains('on')){
+    toast('Сначала включите «Отключать при блокировке»');
+    return;
+  }
+  const on=!btn.classList.contains('on');
+  btn.classList.toggle('on',on);
+  await pushLockBehavior();
+  toast(on?'Переподключение при разблокировке включено':'Переподключение при разблокировке выключено');
+}
+
+// ---------- оптимизация батареи (нужна, чтобы фон не убивался прошивкой) ----------
+async function initBatteryStatus(){
+  const el=document.getElementById('batt-sub'); if(!el||!Vpn||!Vpn.isIgnoringBatteryOptimizations) return;
+  try{
+    const r=await Vpn.isIgnoringBatteryOptimizations();
+    if(r&&r.on) el.textContent='РАЗРЕШЕНО · РАБОТАЕТ В ФОНЕ';
+  }catch(e){}
+}
+async function requestBatteryIgnore(){
+  if(!Vpn||!Vpn.requestIgnoreBatteryOptimizations){ toast('Доступно только в приложении на устройстве'); return; }
+  try{
+    const r=await Vpn.requestIgnoreBatteryOptimizations();
+    if(r&&r.alreadyIgnored){ toast('Уже разрешено'); }
+    setTimeout(initBatteryStatus, 1500);
+  }catch(e){ dbg('battery opt err: '+e); toast('Открыл настройки приложения — включите вручную'); }
+}
+
+// ---------- экономичный режим (интервалы опроса зависят от этого флага) ----------
+let batterySaverOn=false;
+async function initBatterySaver(){
+  if(!Vpn||!Vpn.getBatterySaver) return;
+  try{
+    const r=await Vpn.getBatterySaver();
+    batterySaverOn=!!(r&&r.on);
+    const b=document.getElementById('tgl-battery-saver'); if(b) b.classList.toggle('on', batterySaverOn);
+  }catch(e){}
+}
+async function toggleBatterySaver(btn){
+  const on=!btn.classList.contains('on');
+  btn.classList.toggle('on',on);
+  batterySaverOn=on;
+  if(Vpn&&Vpn.setBatterySaver){ try{ await Vpn.setBatterySaver({on}); }catch(e){ dbg('setBatterySaver err: '+e); } }
+  toast(on?'Экономичный режим включён':'Экономичный режим выключен');
+}
+
+// ---------- пинг в уведомлении о работе VPN ----------
+async function initNotifPing(){
+  if(!Vpn||!Vpn.getNotifPing) return;
+  try{
+    const r=await Vpn.getNotifPing();
+    const b=document.getElementById('tgl-notif-ping'); if(b) b.classList.toggle('on', !!(r&&r.on));
+  }catch(e){}
+}
+async function toggleNotifPing(btn){
+  const on=!btn.classList.contains('on');
+  btn.classList.toggle('on',on);
+  if(Vpn&&Vpn.setNotifPing){ try{ await Vpn.setNotifPing({on}); }catch(e){ dbg('setNotifPing err: '+e); } }
+  toast(on?'Пинг в уведомлении включён':'Пинг в уведомлении выключен');
+}
+
+// ---------- автовключение VPN по приложению ----------
+const triggerSelected=new Set();
+async function initTrigger(){
+  if(!Vpn||!Vpn.getAppTriggers) return;
+  try{
+    const r=await Vpn.getAppTriggers();
+    triggerSelected.clear();
+    for(const p of (r&&r.pkgs)||[]) triggerSelected.add(p);
+    refreshTriggerSub();
+    const en=document.getElementById('tgl-trigger-enabled');
+    if(en) en.classList.toggle('on', !!(r&&r.watcherRunning));
+  }catch(e){}
+}
+function triggerLabelFor(pkg){
+  const a=(appsCache||[]).find(x=>x.package===pkg);
+  return a ? (a.label||a.package) : pkg;
+}
+function refreshTriggerSub(){
+  const n=triggerSelected.size;
+  const sub=document.getElementById('trigger-sub'); if(sub) sub.textContent = n ? ('ВЫБРАНО: '+n) : 'ВЫКЛЮЧЕНО';
+  const cur=document.getElementById('trigger-current');
+  if(cur) cur.textContent = n ? [...triggerSelected].map(triggerLabelFor).join(', ') : 'не выбрано';
+}
+async function refreshUsageAccessUi(){
+  const el=document.getElementById('usage-access-sub'); if(!el||!Vpn||!Vpn.hasUsageAccess) return;
+  try{
+    const r=await Vpn.hasUsageAccess();
+    el.textContent = (r&&r.on) ? 'РАЗРЕШЕНО' : 'НАЖМИТЕ, ЧТОБЫ РАЗРЕШИТЬ';
+  }catch(e){}
+}
+async function requestUsageAccess(){
+  if(!Vpn||!Vpn.requestUsageAccess){ toast('Доступно только в приложении на устройстве'); return; }
+  try{ await Vpn.requestUsageAccess(); setTimeout(refreshUsageAccessUi, 1500); }catch(e){}
+}
+async function openTriggerScreen(){
+  refreshTriggerSub();
+  await refreshUsageAccessUi();
+  if(!appsCache) await loadAppList(); else renderTriggerAppList();
+}
+function renderTriggerAppList(){
+  const list=document.getElementById('trigger-app-list'); if(!list) return;
+  if(!appsCache){ return; }
+  if(!appsCache.length){ list.innerHTML='<div class="list-note">Не удалось получить список приложений.</div>'; return; }
+  const q=(document.getElementById('trigger-search').value||'').trim().toLowerCase();
+  const items=appsCache.filter(a=>!q || (a.label||'').toLowerCase().includes(q) || (a.package||'').toLowerCase().includes(q))
+    .sort((a,b)=>{ const sa=triggerSelected.has(a.package)?0:1, sb=triggerSelected.has(b.package)?0:1; return sa-sb || (a.label||'').localeCompare(b.label||'',undefined,{sensitivity:'base'}); });
+  if(!items.length){ list.innerHTML='<div class="list-note">Ничего не найдено.</div>'; return; }
+  list.innerHTML=items.map(a=>{
+    const on=triggerSelected.has(a.package);
+    const mono=(a.label||a.package||'?').trim().charAt(0);
+    return `<div class="app-row" onclick="toggleTriggerApp('${a.package.replace(/'/g,"\\'")}')">
+      <div class="app-mono">${esc(mono)}</div>
+      <div class="grow"><div class="t">${esc(a.label||a.package)}</div><div class="s">${esc(a.package)}</div></div>
+      <div class="chk${on?' on':''}">✓</div></div>`;
+  }).join('');
+}
+async function toggleTriggerApp(pkg){
+  if(triggerSelected.has(pkg)) triggerSelected.delete(pkg); else triggerSelected.add(pkg);
+  if(Vpn&&Vpn.setAppTriggers){ try{ await Vpn.setAppTriggers({pkgs:[...triggerSelected]}); }catch(e){ dbg('setAppTriggers err: '+e); } }
+  refreshTriggerSub();
+  renderTriggerAppList();
+  // Когда список становится пустым, нативная сторона (VpnPlugin.setAppTriggers) сама
+  // гасит AppWatcherService и сбрасывает watcherRunning — раньше тумблер «Автовключение»
+  // в интерфейсе оставался визуально включённым, хотя сервис уже не работал.
+  if(!triggerSelected.size){
+    const en=document.getElementById('tgl-trigger-enabled');
+    if(en) en.classList.remove('on');
+  }
+  toast(triggerSelected.has(pkg) ? 'Добавлено: '+triggerLabelFor(pkg) : 'Убрано: '+triggerLabelFor(pkg));
+}
+async function toggleTriggerEnabled(btn){
+  const on=!btn.classList.contains('on');
+  if(on && !triggerSelected.size){ toast('Сначала выберите хотя бы одно приложение из списка ниже'); return; }
+  if(on){
+    const r=Vpn&&Vpn.hasUsageAccess?await Vpn.hasUsageAccess().catch(()=>null):null;
+    if(!r||!r.on){ toast('Сначала разрешите доступ к статистике использования'); return; }
+    try{ await Vpn.startAppWatcher(); btn.classList.add('on'); toast('Автовключение запущено ('+triggerSelected.size+' прил.)'); }
+    catch(e){ toast('Не удалось запустить: '+(e&&e.message?e.message:e)); }
+  }else{
+    try{ await Vpn.stopAppWatcher(); }catch(e){}
+    btn.classList.remove('on');
+    toast('Автовключение выключено');
+  }
+}
+
+// ---------- раздельный туннель по приложениям ----------
+let appsCache=null; // [{package,label}]
+const splitSelected=new Set(JSON.parse(localStorage.getItem('mise_splitApps')||'[]'));
+function splitMode(){ return localStorage.getItem('mise_splitMode')||'off'; }
+const SPLIT_HINTS={
+  off:'Весь трафик идёт через VPN.',
+  bypass:'Отмеченные приложения идут МИМО VPN (напрямую), остальное — через VPN.',
+  only:'Через VPN идут ТОЛЬКО отмеченные приложения, остальное — напрямую.'
+};
+function splitModeLabel(){ return {off:'ВЫКЛ',bypass:'МИМО VPN',only:'ТОЛЬКО VPN'}[splitMode()]||'ВЫКЛ'; }
+function refreshSplitSub(){ const el=document.getElementById('split-sub'); if(el) el.textContent='ПО ПРИЛОЖЕНИЯМ · '+splitModeLabel(); }
+function applySplitModeUi(){
+  const m=splitMode();
+  for(const k of ['off','bypass','only']) document.getElementById('split-'+k).classList.toggle('active',k===m);
+  const h=document.getElementById('split-hint'); if(h) h.textContent=SPLIT_HINTS[m];
+  document.getElementById('view-apps').classList.toggle('split-off', m==='off');
+  refreshSplitSub();
+}
+function setSplitMode(m){
+  localStorage.setItem('mise_splitMode',m); applySplitModeUi();
+  if(m!=='off' && !appsCache) loadAppList();
+  if(connected) toast('Применится при следующем подключении');
+}
+async function openAppsScreen(){
+  applySplitModeUi();
+  if(!appsCache) await loadAppList(); else renderAppList();
+}
+async function loadAppList(){
+  const list=document.getElementById('app-list');
+  if(!Vpn || !Vpn.listApps){ list.innerHTML='<div class="list-note">Список приложений доступен только в приложении на устройстве.</div>'; return; }
+  list.innerHTML='<div class="list-note">Загрузка списка приложений…</div>';
+  try{
+    const r=await Vpn.listApps();
+    appsCache=(r&&r.apps?r.apps:[]).slice().sort((a,b)=>(a.label||'').localeCompare(b.label||'',undefined,{sensitivity:'base'}));
+  }catch(e){ appsCache=[]; dbg('listApps err: '+e); }
+  renderAppList();
+}
+function renderAppList(){
+  const list=document.getElementById('app-list'); if(!list) return;
+  if(!appsCache){ return; }
+  if(!appsCache.length){ list.innerHTML='<div class="list-note">Не удалось получить список приложений.</div>'; return; }
+  const q=(document.getElementById('apps-search').value||'').trim().toLowerCase();
+  // выбранные — наверх, затем по алфавиту
+  const items=appsCache.filter(a=>!q || (a.label||'').toLowerCase().includes(q) || (a.package||'').toLowerCase().includes(q))
+    .sort((a,b)=>{ const sa=splitSelected.has(a.package)?0:1, sb=splitSelected.has(b.package)?0:1; return sa-sb || (a.label||'').localeCompare(b.label||'',undefined,{sensitivity:'base'}); });
+  if(!items.length){ list.innerHTML='<div class="list-note">Ничего не найдено.</div>'; return; }
+  list.innerHTML=items.map(a=>{
+    const on=splitSelected.has(a.package);
+    const mono=(a.label||a.package||'?').trim().charAt(0);
+    return `<div class="app-row" onclick="toggleApp('${a.package.replace(/'/g,"\\'")}')">
+      <div class="app-mono">${esc(mono)}</div>
+      <div class="grow"><div class="t">${esc(a.label||a.package)}</div><div class="s">${esc(a.package)}</div></div>
+      <div class="chk${on?' on':''}">✓</div></div>`;
+  }).join('');
+}
+function toggleApp(pkg){
+  if(splitSelected.has(pkg)) splitSelected.delete(pkg); else splitSelected.add(pkg);
+  localStorage.setItem('mise_splitApps', JSON.stringify([...splitSelected]));
+  renderAppList(); refreshSplitSub();
+  if(connected) toast('Применится при следующем подключении');
+}
+
+// ---------- подписка: URL / DNS TXT ----------
+let subMode='url';
+function setSubMode(m){
+  subMode=m;
+  document.getElementById('seg-url').classList.toggle('active',m==='url');
+  document.getElementById('seg-dns').classList.toggle('active',m==='dns');
+  const hint=document.getElementById('sub-hint'), inp=document.getElementById('sub-input');
+  if(m==='dns'){ hint.textContent='Домен с TXT-записью (обход блокировки адреса)'; inp.placeholder='sub.example.com'; }
+  else { hint.textContent='Ссылка на конфиг: mihomo YAML, Xray JSON или список ссылок'; inp.placeholder='https://...'; }
+}
+// резолв TXT через DoH (Cloudflare → Yandex, RU-иммунный)
+async function resolveDnsTxt(domain){
+  const providers=['https://cloudflare-dns.com/dns-query','https://common.dot.dns.yandex.net/dns-query','https://dns.google/resolve'];
+  for(const base of providers){
+    try{
+      const r=await fetch(base+'?name='+encodeURIComponent(domain)+'&type=TXT',{headers:{accept:'application/dns-json'}});
+      const j=await r.json();
+      if(j.Answer){ for(const a of j.Answer){ let t=(a.data||'').replace(/^"|"$/g,'').replace(/" "/g,''); if(t) return t; } }
+    }catch(e){}
+  }
+  return '';
+}
+
+async function saveSubModal(){
+  const raw=document.getElementById('sub-input').value.trim();
+  if(!raw){ toast('Введите значение'); return; }
+  let url=raw;
+  if(subMode==='dns'){
+    toast('Получаю конфиг через DNS…');
+    const txt=await resolveDnsTxt(raw);
+    if(!txt){ toast('DNS TXT не найден для '+raw); return; }
+    url=txt;
+  }
+  const list=subs();
+  const dup=list.find(s=>s.url===url);
+  if(dup){ setActiveSub(dup.id); closeSubModal(); renderSubs(); toast('Уже добавлена — сделал активной'); go('servers'); return; }
+  const item={id:'s'+Date.now(), name:subName(url), url};
+  list.push(item); saveSubs(list); setActiveSub(item.id);
+  closeSubModal(); renderSubs(); go('servers');
+  // Авто-подбор рабочего User-Agent — только если сейчас НЕ подключены: проверка
+  // реально поднимает и гасит тестовый туннель под каждым вариантом, а Android
+  // разрешает только одно активное VPN-подключение разом.
+  if(!connected && Vpn && Vpn.testUserAgents){
+    autoDetectUa(url);
+  } else {
+    toast('Подписка добавлена');
+    if(connected) toast('Автоподбор User-Agent доступен только при отключённом VPN');
+  }
+}
+
+// ---------- авто-подбор User-Agent (реальная проверка через нативную сторону) ----------
+let uaTestResolver=null;
+function uaLabel(ua){ const p=UA_PRESETS.find(x=>x.ua===ua); return p ? p.t : ua; }
+function showUaTestModal(){
+  const m=document.getElementById('ua-test-modal'); if(!m) return;
+  document.getElementById('ua-test-hint-text').textContent='Начинаю проверку…';
+  m.classList.remove('hidden');
+}
+function closeUaTestModal(){
+  const m=document.getElementById('ua-test-modal'); if(m) m.classList.add('hidden');
+  // Раньше крестик только прятал модалку, но не резолвил uaTestResolver — если
+  // нативная сторона не присылала "done" (зависший тест, убитый процесс и т.д.),
+  // await в autoDetectUa() висел вечно, а закрытая модалка потом внезапно
+  // "оживала" (toast/setUserAgent), когда done всё же приходил, иногда сильно
+  // позже, чем пользователь про это уже забыл. Теперь крестик — это отмена.
+  if(uaTestResolver){ const r=uaTestResolver; uaTestResolver=null; r(null); }
+}
+function handleUaTestEvent(kind, ua, extra){
+  const el=document.getElementById('ua-test-hint-text');
+  if(kind==='trying' && el) el.textContent='Пробую формат «'+uaLabel(ua)+'»…';
+  else if(kind==='ok' && el) el.textContent='✓ подошёл формат «'+uaLabel(ua)+'»';
+  else if(kind==='fail' && el) el.textContent='✕ «'+uaLabel(ua)+'» не подошёл, пробую следующий…';
+  else if(kind==='done'){
+    closeUaTestModal();
+    if(uaTestResolver){ const r=uaTestResolver; uaTestResolver=null; r(ua||null); }
+  }
+}
+// Раньше автоподбор запускался ТОЛЬКО один раз — в момент самого первого добавления
+// новой ссылки (см. saveSubModal). Если подписка уже была добавлена, повторно
+// запустить проверку было неоткуда — окно просто больше никогда не появлялось.
+// Эта функция — точка входа для ручного перезапуска в любой момент, для активной
+// подписки, без привязки к моменту её добавления.
+function autoDetectUaManual(){
+  const url=getSubUrl();
+  if(!url){ toast('Сначала добавьте подписку'); return; }
+  if(connected){ toast('Сначала отключите VPN — проверка поднимает свой тестовый туннель'); return; }
+  autoDetectUa(url);
+}
+async function autoDetectUa(url){
+  if(!Vpn || !Vpn.testUserAgents) return;
+  showUaTestModal();
+  try{
+    await Vpn.testUserAgents({ url, hwid: getHwid(), uas: UA_PRESETS.map(p=>p.ua) });
+  }catch(e){
+    closeUaTestModal();
+    toast('Автоподбор не запущен: '+(e&&e.message?e.message:e));
+    return;
+  }
+  // Страховка на случай, если нативная сторона вообще не пришлёт "done" (например,
+  // процесс тестирования упал молча) — без этого промис висел бы бесконечно, даже
+  // крестик его не спасал бы, если сам обработчик не вызывался.
+  const winner = await new Promise(res=>{
+    uaTestResolver=res;
+    setTimeout(()=>{ if(uaTestResolver===res){ uaTestResolver=null; closeUaTestModal(); res(null); } }, 45000);
+  });
+  if(winner){
+    setUserAgent(winner);
+    toast('Подобран формат подписки: '+uaLabel(winner));
+  }else{
+    toast('Не удалось подобрать рабочий формат — выберите User-Agent вручную');
+  }
+  previewServers();
+}
+
+// ---------- трафик (реальный, из API ядра) ----------
+function fmtBytes(b){ if(b<1024) return b+' Б'; const u=['КБ','МБ','ГБ','ТБ']; let i=-1; do{ b/=1024; i++; }while(b>=1024&&i<u.length-1); return b.toFixed(b<10?1:0)+' '+u[i]; }
+let trafTimer=null, totalUp=0, totalDown=0;
+function startTraffic(){
+  if(trafTimer) return;
+  trafTimer=setInterval(async()=>{
+    if(!connected) return;
+    // /connections отдаёт весь список соединений — не дёргаем его, пока экран не виден
+    if(document.hidden) return;
+    const r=await core('GET','/connections');
+    if(r.ok && r.data){
+      totalUp=r.data.uploadTotal||0; totalDown=r.data.downloadTotal||0;
+      const el=document.getElementById('sess-data'); if(el) el.textContent=fmtBytes(totalUp+totalDown);
+    }
+  }, batterySaverOn?9000:3000);
+}
+function stopTraffic(){ clearInterval(trafTimer); trafTimer=null; const el=document.getElementById('sess-data'); if(el) el.textContent='0 Б'; }
+
+// ---------- тема (с сохранением) ----------
+function applyTheme(){ const t=localStorage.getItem('mise_theme'); document.documentElement.setAttribute('data-theme', t==='light'?'light':''); }
+function toggleTheme(){
+  const cur=localStorage.getItem('mise_theme')==='light'?'':'light';
+  localStorage.setItem('mise_theme', cur||'dark'); applyTheme();
+}
+
+applyTheme();
+applyAccent();
+renderAccents();
+applyHomeStyleUi();
+checkForUpdate(true);
+refreshPingSettingsSub();
+applyPresetUi();
+refreshChainsSub();
+applyModeLabel();
+refreshSplitSub();
+initAutostart();
+initLockBehavior();
+initBatteryStatus();
+initBatterySaver();
+initNotifPing();
+initTrigger();
+applyUaSub();
+renderSubs();
+// одноразовая синхронизация уже выбранного сервера по умолчанию в нативные prefs —
+// для тех, кто выбрал его ещё до появления нативного переприменения (см. preSelect)
+if(Vpn && Vpn.setPreferredServer && getPreferred()){ Vpn.setPreferredServer({name:getPreferred()}).catch(()=>{}); }
+setUiConnected(false);
+// стартовая диагностика окружения
+dbg('старт '+BUILD+' | Cap='+(!!Cap)+' platform='+platform+' native='+isNative+' plugin='+(!!Vpn)+' reg='+(!!(Cap&&Cap.registerPlugin)));
+const vs=document.getElementById('ver-sub'); if(vs) vs.textContent='MISETANIBOX · '+BUILD.toUpperCase();
+</script>
+</body>
+</html>
+

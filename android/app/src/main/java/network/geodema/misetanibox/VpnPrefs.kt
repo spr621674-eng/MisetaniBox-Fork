@@ -39,6 +39,14 @@ object VpnPrefs {
     const val KEY_APP_TRIGGER_PKGS = "app_trigger_pkgs"
     /** Экономичный режим: реже опрашивает ядро, меньше будит систему */
     const val KEY_BATTERY_SAVER = "battery_saver"
+    /** Пинг активного узла в уведомлении в шторке — включён по умолчанию, отдельная
+     * периодическая проверка (см. MihomoVpnService.schedulePingLoop), не бесплатная
+     * по трафику/будильникам, поэтому даём выключить тем, кому не нужно. */
+    const val KEY_NOTIF_PING = "notif_ping"
+    fun isNotifPingEnabled(ctx: Context): Boolean = prefs(ctx).getBoolean(KEY_NOTIF_PING, true)
+    fun setNotifPingEnabled(ctx: Context, on: Boolean) {
+        prefs(ctx).edit().putBoolean(KEY_NOTIF_PING, on).apply()
+    }
     /**
      * Включена ли функция «Автовключение по приложению» (тумблер, а не список приложений).
      * Раньше это состояние жило только в памяти как AppWatcherService.isRunning — после
@@ -236,4 +244,3 @@ object VpnPrefs {
         ctx.startService(i)
     }
 }
-

@@ -202,6 +202,24 @@ class VpnPlugin : Plugin() {
         call.resolve()
     }
 
+    // ---------- пинг в уведомлении ----------
+    @PluginMethod
+    fun getNotifPing(call: PluginCall) {
+        call.resolve(JSObject().put("on", VpnPrefs.isNotifPingEnabled(context)))
+    }
+
+    @PluginMethod
+    fun setNotifPing(call: PluginCall) {
+        val on = call.getBoolean("on", true) ?: true
+        VpnPrefs.setNotifPingEnabled(context, on)
+        // Если туннель сейчас работает — обновляем уведомление сразу, не дожидаясь
+        // следующего тика цикла (иначе выключенный тумблер визуально «не сработал бы»
+        // до следующего цикла, а включённый ждал бы аж 20 секунд первого замера).
+        val i = Intent(context, MihomoVpnService::class.java).apply { action = MihomoVpnService.ACTION_REFRESH_NOTIF }
+        try { context.startService(i) } catch (_: Exception) {}
+        call.resolve()
+    }
+
     // ---------- автовключение VPN по приложению (можно выбрать несколько) ----------
     // пустой список отключает функцию (AppWatcherService сам ничего не делает без
     // триггеров, но сам сервис лучше не гонять в фоне, когда список пуст — см. stopAppWatcher).
@@ -587,4 +605,3 @@ class VpnPlugin : Plugin() {
         }
     }
 }
-
