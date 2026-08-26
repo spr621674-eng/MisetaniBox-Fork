@@ -825,13 +825,8 @@ function orderedGroups(P){
   // В режиме «Глобально» правила не участвуют — весь трафик идёт через один
   // выбранный узел из служебной группы GLOBAL, остальные группы не имеют смысла.
   if(curMode()==='global' && P['GLOBAL']) return ['GLOBAL'];
-  // прячем GLOBAL и группы с hidden:true (mihomo помечает служебные — как во FlClash),
-  // а также группы-политики выбора DNS-апстрима (DNS-SELECTOR и т.п. — реальная
-  // подписка присылает их наравне с обычными группами серверов, хотя это не сервер
-  // трафика, а внутренний роутинг DNS-запросов панели). Именно они и были частью
-  // «мусора» в списке — сервер для подключения там выбрать всё равно нельзя.
-  const isDnsGroup=n=>/(^|[^a-zа-яё])dns([^a-zа-яё]|$)/i.test(n);
-  const names=Object.keys(P).filter(n=>isGroup(P[n]) && n!=='GLOBAL' && !P[n].hidden && !isDnsGroup(n));
+  // прячем GLOBAL и группы с hidden:true (mihomo помечает служебные — как во FlClash)
+  const names=Object.keys(P).filter(n=>isGroup(P[n]) && n!=='GLOBAL' && !P[n].hidden);
   const gl=(P['GLOBAL']&&Array.isArray(P['GLOBAL'].all))?P['GLOBAL'].all.filter(n=>names.includes(n)):[];
   const order=gl.slice();
   for(const n of names) if(!order.includes(n)) order.push(n);
@@ -876,7 +871,7 @@ function renderProxies(){
     const type=String(g.type||'').toLowerCase();
     const tag=GROUP_TAG[type]||type.toUpperCase();
     const roBadge=sel?'':'<span class="ro-badge">только&nbsp;просмотр</span>';
-    html+=`<div class="row grp-row" onclick="toggleGroup('${q(gn)}')">${flagImg(now,'flag')}<div class="grow"><div class="t">${esc(gn)}</div><div class="s">${tag} · ${esc(cleanName(now))||'—'}</div></div>${roBadge}<span class="chev">${open?'▴':'▾'}</span></div>`;
+    html+=`<div class="row grp-row" onclick="toggleGroup('${q(gn)}')">${flagImg(now,'flag')}<div class="grow"><div class="t">${esc(gn)}</div><div class="s">${tag} · ${esc(cleanName(now))||'—'}</div></div>${ping(now)}${roBadge}<span class="chev">${open?'▴':'▾'}</span></div>`;
     if(open){
       html+=g.all.map(n=>{
         const active=n===now;
@@ -920,8 +915,25 @@ function parseClashNames(text){
   // тоже есть слово name, и на границе после дефиса оно матчилось как отдельный ключ.
   const names=[]; const re=/(?:^|\n)[ \t]*(?:-[ \t]*\{?[ \t]*)?name[ \t]*:[ \t]*(['"]?)([^'"\n,}]+)\1/g; let x;
   while((x=re.exec(block))){ const n=x[2].trim(); if(n) names.push(n); }
-  return names;
+  // У некоторых подписок в статическом теле лежат не реальные сервера, а служебные
+  // псевдоузлы для роутинга DNS-запросов (просто политики DIRECT/REJECT под разными
+  // именами, иногда с «&параметрами» в имени) — они мусор для превью, а не то, что
+  // человек должен выбирать как «сервер». Настоящие сервера в таких подписках вообще
+  // отсутствуют в статическом теле — ядро подгружает их само через proxy-providers
+  // уже ПОСЛЕ подключения, увидеть их заранее в превью нельзя в принципе.
+  const JUNK=new Set(['DIRECT','REJECT','REJECT-DROP','PASS','COMPATIBLE','GLOBAL','DNS-SELECTOR']);
+  const clean=names.filter(n=>{
+    const up=n.trim().toUpperCase();
+    if(JUNK.has(up)) return false;
+    if(up.startsWith('DIRECT&')||up.startsWith('REJECT&')||up.startsWith('DNS-SELECTOR&')) return false;
+    return true;
+  });
+  return [...new Set(clean)];
 }
+// Есть ли в статическом теле подписки proxy-providers: — если да, часть (или все)
+// реальные сервера подгружаются ядром динамически при подключении, и то, что видно
+// в превью ДО подключения, может быть неполным или отсутствовать вовсе.
+function hasDynamicProviders(text){ return /(?:^|\n)proxy-providers\s*:\s*\n/.test(text); }
 function parseSubNames(text){ const v=parseV2rayNames(text); return v.length?v:parseClashNames(text); }
 
 function getPreferred(){ return localStorage.getItem('mise_preferred'); }
@@ -977,6 +989,17 @@ async function previewServers(){
   const names=(r.names && r.names.length) ? r.names : parseSubNames(r.body);
   dbg('превью: '+names.length+' серверов из подписки');
   if(!names.length){
+    // Реальные сервера могут отсутствовать в статическом теле вовсе (подгружаются
+    // ядром динамически через proxy-providers при подключении) — тогда пустой
+    // список это не ошибка парсинга, а особенность конкретной подписки. Раньше в
+    // этом случае показывался мусор (служебные DNS-псевдоузлы) вместо честного
+    // объяснения — теперь мусор отфильтрован, а сюда попадает именно этот случай.
+    if(r.body && hasDynamicProviders(r.body)){
+      subEl.textContent='ПОСЛЕ ПОДКЛЮЧЕНИЯ';
+      list.innerHTML='<div class="list-note">Эта подписка подгружает список серверов сама уже во время работы туннеля — до подключения его просто неоткуда взять. Нажмите «Подключиться», полный список появится здесь сразу после установления соединения.</div>';
+      hideServersBanner();
+      return;
+    }
     if(cached){ showServersBanner('offline','Не удалось обновить — показаны данные от '+fmtTime(cached.ts)); }
     else{ subEl.textContent='—'; list.innerHTML='<div class="list-note">Не удалось разобрать список. '+esc(r.error||'Формат подписки не распознан.')+'</div>'; hideServersBanner(); }
     return;
@@ -1103,6 +1126,26 @@ async function pingBatch(names, url, timeout, batchSize){
     renderProxies(); // промежуточный рендер — видно прогресс, а не ждать всё сразу
   }
 }
+// Раньше проверялись ТОЛЬКО «голые» листовые сервера (не завёрнутые в группу) —
+// у многих подписок (как у этой) почти каждая «страна» в списке на самом деле
+// group-селектор с одним реальным узлом внутри, и такие никогда не пинговались
+// вообще. /group/{имя}/delay — штатный эндпоинт mihomo, пингует РАЗОМ все узлы
+// внутри группы и возвращает {имяУзла: мс, ...} — одним запросом на группу,
+// не по одному на каждый вложенный узел.
+async function pingGroupsBatch(groupNames, url, timeout, batchSize){
+  for(let i=0;i<groupNames.length;i+=batchSize){
+    const chunk=groupNames.slice(i,i+batchSize);
+    await Promise.all(chunk.map(async gn=>{
+      try{
+        const rr=await core('GET','/group/'+encodeURIComponent(gn)+'/delay?timeout='+timeout+'&url='+encodeURIComponent(url));
+        if(rr.data && typeof rr.data==='object'){
+          for(const [node,val] of Object.entries(rr.data)) delays[node]=(typeof val==='number')?val:-1;
+        }
+      }catch(e){}
+    }));
+    renderProxies();
+  }
+}
 async function pingAll(){
   if(!connected) return;
   // Всегда берём СВЕЖИЙ список у ядра прямо перед проверкой — если подписка
@@ -1113,9 +1156,13 @@ async function pingAll(){
   const P=_proxies; if(!P){ toast('Нет данных'); return; }
   const skip=['DIRECT','REJECT','REJECT-DROP','PASS','COMPATIBLE','GLOBAL'];
   const leafs=[...new Set(Object.keys(P).filter(n=>!isGroup(P[n]) && !skip.includes(n)))];
-  if(!leafs.length){ toast('Нет серверов'); return; }
-  toast('Проверка '+leafs.length+' серверов…');
-  await pingBatch(leafs, pingUrl(), 3000, 12);
+  const groupNames=[...new Set(Object.keys(P).filter(n=>isGroup(P[n]) && n!=='GLOBAL'))];
+  if(!leafs.length && !groupNames.length){ toast('Нет серверов'); return; }
+  toast('Проверка '+(leafs.length+groupNames.length)+' серверов…');
+  await Promise.all([
+    pingBatch(leafs, pingUrl(), 3000, 12),
+    pingGroupsBatch(groupNames, pingUrl(), 3000, 4),
+  ]);
   renderProxies();
   toast('Проверка завершена');
 }
