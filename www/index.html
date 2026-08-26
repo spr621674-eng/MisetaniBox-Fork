@@ -255,13 +255,14 @@ body{background:var(--bg);color:var(--fg);font-family:'Inter Tight',sans-serif;o
     </div>
 
     <div class="sec-title" style="font-size:18px;padding-top:18px;padding-bottom:0">Тип проверки</div>
-    <div class="sub-seg" style="margin:10px 24px 0;width:calc(100% - 48px)">
+    <div class="sub-seg" style="margin:10px 24px 0;width:calc(100% - 48px);flex-wrap:wrap">
       <button class="sub-seg-btn" id="ping-mode-numeric" onclick="setPingMode('numeric')">HTTP GET · мс</button>
       <button class="sub-seg-btn" id="ping-mode-strict" onclick="setPingMode('strict')">Жёсткая · да/нет</button>
+      <button class="sub-seg-btn" id="ping-mode-tcp" onclick="setPingMode('tcp')">TCP · мс</button>
     </div>
     <div class="list-note" id="ping-mode-hint">HTTP GET — показывает точное время ответа в миллисекундах через сам сервер.</div>
 
-    <div class="list-note">Пинг всегда идёт настоящим запросом через выбранный сервер (не просто «видит ли телефон интернет»), поэтому это надёжный показатель именно того, что сервер реально работает. Прямой TCP/ICMP-пинг к самому серверу (в обход прокси-протокола) в этой версии ядра недоступен — движок mihomo такого не отдаёт через свой API.</div>
+    <div class="list-note">HTTP GET и «Жёсткая» идут настоящим запросом ЧЕРЕЗ выбранный сервер (не просто «видит ли телефон интернет») — надёжный показатель того, что сервер реально работает и пропускает трафик. TCP — это отдельный тип: голое TCP-соединение НАПРЯМУЮ к самому серверу, в обход прокси-протокола и туннеля — показывает чистую задержку сети до узла, но не проверяет, что прокси на нём в принципе рабочий. Доступен только для подписок, где адреса серверов видны заранее в самой подписке (не для тех, что подгружают сервера на лету при подключении).</div>
   </div>
 
   <!-- НАСТРОЙКИ -->
@@ -821,6 +822,10 @@ function cachedServers(){
   if(!clean.length) return null;
   return clean.length===c.all.length ? c : {...c, all:clean};
 }
+function getHostPorts(){
+  const c=safeJson(localStorage.getItem('mise_lastServers'));
+  return (c && c.hp && typeof c.hp==='object') ? c.hp : {};
+}
 
 // ---------- классические группы-селекторы (как FlClash/mihomo) ----------
 let _proxies=null, expandedGroups={};
@@ -940,6 +945,30 @@ function filterJunkNames(names){
   });
   return [...new Set(clean)];
 }
+// Для TCP-пинга (настоящее TCP-соединение К САМОМУ СЕРВЕРУ, в обход михомо и его API)
+// нужны host+port каждого узла — mihomo через API их не отдаёт вообще (сознательно,
+// из соображений приватности), поэтому берём напрямую из тела подписки, там же, где
+// и имена. Работает только для подписок со статическим списком proxies: — для тех,
+// что подтягивают сервера через proxy-providers на лету, данных для TCP-пинга нет
+// (см. hasDynamicProviders) — как и с превью-списком в этом случае.
+function parseServerPorts(text){
+  const m=text.match(/(?:^|\n)proxies\s*:\s*\n([\s\S]*?)(?:\n[a-zA-Z][\w-]*\s*:|\s*$)/);
+  const block=m?m[1]:''; if(!block) return {};
+  // делим блок на отдельные записи по началу новой строки вида "- " с тем же отступом
+  const entries=block.split(/\n(?=[ \t]*-[ \t])/);
+  const map={};
+  for(const entry of entries){
+    const nameM=entry.match(/(?:^|\n)[ \t]*(?:-[ \t]*\{?[ \t]*)?name[ \t]*:[ \t]*(['"]?)([^'"\n,}]+)\1/);
+    const hostM=entry.match(/(?:^|\n|,)[ \t]*server[ \t]*:[ \t]*(['"]?)([^'"\n,}]+)\1/);
+    const portM=entry.match(/(?:^|\n|,)[ \t]*port[ \t]*:[ \t]*(['"]?)(\d+)\1/);
+    if(nameM && hostM && portM){
+      const name=nameM[2].trim();
+      const port=parseInt(portM[2],10);
+      if(name && hostM[2].trim() && port>0) map[name]={host:hostM[2].trim(), port};
+    }
+  }
+  return map;
+}
 // Есть ли в статическом теле подписки proxy-providers: — если да, часть (или все)
 // реальные сервера подгружаются ядром динамически при подключении, и то, что видно
 // в превью ДО подключения, может быть неполным или отсутствовать вовсе.
@@ -1014,7 +1043,8 @@ async function previewServers(){
     else{ subEl.textContent='—'; list.innerHTML='<div class="list-note">Не удалось разобрать список. '+esc(r.error||'Формат подписки не распознан.')+'</div>'; hideServersBanner(); }
     return;
   }
-  localStorage.setItem('mise_lastServers', JSON.stringify({all:names, now:getPreferred(), ts:Date.now()}));
+  const hp = r.body ? parseServerPorts(r.body) : {};
+  localStorage.setItem('mise_lastServers', JSON.stringify({all:names, now:getPreferred(), ts:Date.now(), hp}));
   renderSubs();
   renderPreviewServers(names);
   showServersBanner('updated','✓ Список серверов обновлён');
@@ -1071,7 +1101,7 @@ function pingUrl(){
   if(custom) return custom;
   return PING_PRESETS[pingPreset()]||PING_PRESETS.gstatic;
 }
-function pingMode(){ return localStorage.getItem('mise_ping_mode')||'numeric'; }
+function pingMode(){ return localStorage.getItem('mise_ping_mode')||'strict'; }
 function setPingPreset(p){
   localStorage.setItem('mise_ping_preset', p);
   localStorage.setItem('mise_ping_custom_url', ''); // пресет и свой адрес взаимоисключающие
@@ -1091,7 +1121,7 @@ function refreshPingSettingsSub(){
   const el=document.getElementById('pingcfg-sub'); if(!el) return;
   const custom=pingCustomUrl().trim();
   const label = custom ? 'СВОЙ АДРЕС' : pingPreset().toUpperCase();
-  const modeLabel = pingMode()==='strict' ? 'ЖЁСТКАЯ ПРОВЕРКА' : 'HTTP GET';
+  const modeLabel = {strict:'ЖЁСТКАЯ ПРОВЕРКА', tcp:'TCP'}[pingMode()] || 'HTTP GET';
   el.textContent = label+' · '+modeLabel;
 }
 function openPingCfgScreen(){
@@ -1105,14 +1135,16 @@ function refreshPingCfgUi(){
     const el=document.getElementById('pp-'+p);
     if(el) el.textContent = (!custom && preset===p) ? '●' : '';
   }
-  const mNum=document.getElementById('ping-mode-numeric'), mStrict=document.getElementById('ping-mode-strict');
+  const mNum=document.getElementById('ping-mode-numeric'), mStrict=document.getElementById('ping-mode-strict'), mTcp=document.getElementById('ping-mode-tcp');
   const m=pingMode();
   if(mNum) mNum.classList.toggle('active', m==='numeric');
   if(mStrict) mStrict.classList.toggle('active', m==='strict');
+  if(mTcp) mTcp.classList.toggle('active', m==='tcp');
   const hint=document.getElementById('ping-mode-hint');
-  if(hint) hint.textContent = m==='strict'
-    ? 'Жёсткая проверка — просто «работает» или «недоступен», без миллисекунд. Полезно, если важен сам факт работоспособности, а не скорость.'
-    : 'HTTP GET — показывает точное время ответа в миллисекундах через сам сервер.';
+  if(hint) hint.textContent =
+    m==='strict' ? 'Жёсткая проверка — просто «работает» или «недоступен», без миллисекунд. Полезно, если важен сам факт работоспособности, а не скорость.' :
+    m==='tcp' ? 'TCP — голое соединение напрямую к серверу, в обход туннеля и прокси-протокола. Показывает чистую сетевую задержку до узла, но не проверяет, что прокси на нём отвечает. Работает не для всех подписок — см. пояснение ниже.' :
+    'HTTP GET — показывает точное время ответа в миллисекундах через сам сервер.';
 }
 
 async function selectNode(group, name){
@@ -1156,6 +1188,20 @@ async function pingGroupsBatch(groupNames, url, timeout, batchSize){
     renderProxies();
   }
 }
+async function tcpPingBatch(names, hp, timeout, batchSize){
+  for(let i=0;i<names.length;i+=batchSize){
+    const chunk=names.slice(i,i+batchSize);
+    await Promise.all(chunk.map(async n=>{
+      const addr=hp[n];
+      if(!addr || !Vpn || !Vpn.tcpPing){ delays[n]=-1; return; }
+      try{
+        const r=await Vpn.tcpPing({host:addr.host, port:addr.port, timeoutMs:timeout});
+        delays[n]=(r && typeof r.delay==='number')?r.delay:-1;
+      }catch(e){ delays[n]=-1; }
+    }));
+    renderProxies();
+  }
+}
 async function pingAll(){
   if(!connected) return;
   // Всегда берём СВЕЖИЙ список у ядра прямо перед проверкой — если подписка
@@ -1168,6 +1214,17 @@ async function pingAll(){
   const leafs=[...new Set(Object.keys(P).filter(n=>!isGroup(P[n]) && !skip.includes(n)))];
   const groupNames=[...new Set(Object.keys(P).filter(n=>isGroup(P[n]) && n!=='GLOBAL'))];
   if(!leafs.length && !groupNames.length){ toast('Нет серверов'); return; }
+  if(pingMode()==='tcp'){
+    const hp=getHostPorts();
+    const withHp=leafs.filter(n=>hp[n]);
+    if(!withHp.length){ toast('Нет адресов серверов для TCP — обновите список во вкладке «Серверы» при выключенном VPN, или эта подписка их не даёт заранее'); return; }
+    if(!Vpn || !Vpn.tcpPing){ toast('TCP-проверка доступна только в приложении на устройстве'); return; }
+    toast('TCP-проверка '+withHp.length+' серверов…');
+    await tcpPingBatch(withHp, hp, 3000, 8);
+    renderProxies();
+    toast('Проверка завершена');
+    return;
+  }
   toast('Проверка '+(leafs.length+groupNames.length)+' серверов…');
   await Promise.all([
     pingBatch(leafs, pingUrl(), 3000, 12),
